@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Glassmorphism Color Palette (matching reference image)
-  static const Color primaryColor = Color(0xFF00D4FF); // Vibrant Blue
-  static const Color secondaryColor = Color(0xFF8B5CF6); // Purple
-  static const Color accentColor = Color(0xFFFF6B9D); // Pink
+  // Glassmorphism Color Palette (matching sidebar purple theme)
+  static const Color primaryColor = Color(0xFF667eea); // Purple-Blue (sidebar primary)
+  static const Color secondaryColor = Color(0xFF764ba2); // Deep Purple (sidebar secondary)
+  static const Color accentColor = Color(0xFF8B5CF6); // Light Purple
   static const Color errorColor = Color(0xFFFF4757); // Red
   static const Color successColor = Color(0xFF2ED573); // Green
   static const Color warningColor = Color(0xFFFFA502); // Orange
@@ -21,15 +21,15 @@ class AppTheme {
   static const Color glassBorder = Color(0x33FFFFFF); // 20% white
   static const Color glassShadow = Color(0x1A000000); // 10% black
   
-  // Gradient Colors (matching reference)
+  // Gradient Colors (matching sidebar purple theme)
   static const List<Color> primaryGradient = [
-    Color(0xFF00D4FF), // Vibrant blue
-    Color(0xFF8B5CF6), // Purple
+    Color(0xFF667eea), // Purple-Blue
+    Color(0xFF764ba2), // Deep Purple
   ];
   
   static const List<Color> secondaryGradient = [
-    Color(0xFFFF6B9D), // Pink
-    Color(0xFF00D4FF), // Blue
+    Color(0xFF8B5CF6), // Light Purple
+    Color(0xFF667eea), // Purple-Blue
   ];
   
   static const List<Color> backgroundGradient = [

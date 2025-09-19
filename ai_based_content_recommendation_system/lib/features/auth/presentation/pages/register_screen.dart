@@ -5,7 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/animated_logo.dart';
 import '../../../../core/widgets/animated_button.dart';
-import '../../../../core/widgets/modern_card.dart';
+import '../../../../core/widgets/glassmorphism_card.dart';
 import '../providers/auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -82,7 +82,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: AppTheme.primaryGradient,
+            colors: AppTheme.backgroundGradient,
           ),
         ),
         child: SafeArea(
@@ -95,8 +95,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   // Animated Logo
                   const AnimatedLogo(
                     size: 120,
-                    primaryColor: Colors.white,
-                    secondaryColor: AppTheme.primaryColor,
+                    primaryColor: AppTheme.primaryColor,
+                    secondaryColor: AppTheme.accentColor,
                     showText: false,
                   ),
                   
@@ -124,7 +124,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const SizedBox(height: 48),
                   
                   // Registration Form Card
-                  ModernCard(
+                  GlassmorphismCard(
                     child: Form(
                       key: _formKey,
                       child: Column(

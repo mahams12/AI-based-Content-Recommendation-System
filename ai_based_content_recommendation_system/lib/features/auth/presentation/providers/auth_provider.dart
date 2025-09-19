@@ -28,6 +28,18 @@ class AuthService {
       return credential;
     } on FirebaseAuthException catch (e) {
       print('Firebase Auth Error: ${e.code} - ${e.message}');
+      // Handle specific Firebase errors
+      if (e.code == 'invalid-credential') {
+        throw 'Invalid email or password. Please check your credentials and try again.';
+      } else if (e.code == 'user-not-found') {
+        throw 'No account found with this email address. Please sign up first.';
+      } else if (e.code == 'wrong-password') {
+        throw 'Incorrect password. Please try again.';
+      } else if (e.code == 'too-many-requests') {
+        throw 'Too many failed attempts. Please try again later.';
+      } else if (e.code == 'network-request-failed') {
+        throw 'Network error. Please check your internet connection.';
+      }
       throw _handleAuthException(e);
     } catch (e) {
       print('General Error: $e');
@@ -48,6 +60,16 @@ class AuthService {
       return credential;
     } on FirebaseAuthException catch (e) {
       print('Firebase Auth Error: ${e.code} - ${e.message}');
+      // Handle specific Firebase errors
+      if (e.code == 'email-already-in-use') {
+        throw 'An account already exists with this email address. Please sign in instead.';
+      } else if (e.code == 'weak-password') {
+        throw 'Password is too weak. Please choose a stronger password.';
+      } else if (e.code == 'invalid-email') {
+        throw 'Please enter a valid email address.';
+      } else if (e.code == 'network-request-failed') {
+        throw 'Network error. Please check your internet connection.';
+      }
       throw _handleAuthException(e);
     } catch (e) {
       print('General Error: $e');

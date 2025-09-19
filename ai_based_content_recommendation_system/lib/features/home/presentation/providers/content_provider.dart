@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/content_model.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/recommendation_engine.dart';
+import '../../../../core/services/feedback_service.dart';
+import '../../../../core/services/mood_based_filtering_service.dart';
 
 // Trending content provider
 final trendingContentProvider = StateNotifierProvider<TrendingContentNotifier, AsyncValue<List<ContentItem>>>((ref) {
@@ -26,6 +29,7 @@ class TrendingContentNotifier extends StateNotifier<AsyncValue<List<ContentItem>
   List<ContentItem> _allContent = [];
   String _currentMood = 'all';
   List<ContentType> _currentPlatforms = ContentType.values;
+  final MoodBasedFilteringService _moodFilteringService = MoodBasedFilteringService();
 
   Future<void> loadTrendingContent() async {
     state = const AsyncValue.loading();
@@ -35,7 +39,8 @@ class TrendingContentNotifier extends StateNotifier<AsyncValue<List<ContentItem>
       final cachedContent = StorageService.getCachedContent('trending');
       if (cachedContent != null && cachedContent.isNotEmpty) {
         _allContent = cachedContent;
-        state = AsyncValue.data(_applyFilters(_allContent));
+        final filteredContent = await _applyFilters(_allContent);
+        state = AsyncValue.data(filteredContent);
       }
 
       // Fetch fresh content
@@ -49,7 +54,8 @@ class TrendingContentNotifier extends StateNotifier<AsyncValue<List<ContentItem>
         await StorageService.cacheContent('trending', _allContent);
         
         // Apply current filters
-        state = AsyncValue.data(_applyFilters(_allContent));
+        final filteredContent = await _applyFilters(_allContent);
+        state = AsyncValue.data(filteredContent);
       } else {
         if (state is AsyncLoading) {
           state = AsyncValue.error(result.error ?? 'Failed to load trending content', StackTrace.current);
@@ -60,21 +66,33 @@ class TrendingContentNotifier extends StateNotifier<AsyncValue<List<ContentItem>
     }
   }
 
-  void filterByMood(String mood) {
+  Future<void> filterByMood(String mood) async {
     _currentMood = mood;
     if (_allContent.isNotEmpty) {
-      state = AsyncValue.data(_applyFilters(_allContent));
+      state = const AsyncValue.loading();
+      try {
+        final filteredContent = await _applyFilters(_allContent);
+        state = AsyncValue.data(filteredContent);
+      } catch (e) {
+        state = AsyncValue.error(e, StackTrace.current);
+      }
     }
   }
 
-  void filterByPlatforms(List<ContentType> platforms) {
+  Future<void> filterByPlatforms(List<ContentType> platforms) async {
     _currentPlatforms = platforms;
     if (_allContent.isNotEmpty) {
-      state = AsyncValue.data(_applyFilters(_allContent));
+      state = const AsyncValue.loading();
+      try {
+        final filteredContent = await _applyFilters(_allContent);
+        state = AsyncValue.data(filteredContent);
+      } catch (e) {
+        state = AsyncValue.error(e, StackTrace.current);
+      }
     }
   }
 
-  List<ContentItem> _applyFilters(List<ContentItem> content) {
+  Future<List<ContentItem>> _applyFilters(List<ContentItem> content) async {
     var filteredContent = content;
 
     // Filter by platforms
@@ -84,79 +102,18 @@ class TrendingContentNotifier extends StateNotifier<AsyncValue<List<ContentItem>
           .toList();
     }
 
-    // Filter by mood (simplified implementation)
+    // Filter by mood using AI-powered filtering
     if (_currentMood != 'all') {
-      filteredContent = _filterByMood(filteredContent, _currentMood);
+      filteredContent = await _moodFilteringService.filterContentByMood(
+        content: filteredContent,
+        mood: _currentMood,
+        maxResults: 50,
+      );
     }
 
     return filteredContent;
   }
 
-  List<ContentItem> _filterByMood(List<ContentItem> content, String mood) {
-    // This is a simplified mood filtering implementation
-    // In a real app, this would use ML models and user behavior analysis
-    
-    switch (mood) {
-      case 'energetic':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Action', 'Dance', 'Electronic', 'Rock', 'Pop'].contains(genre)
-          )
-        ).toList();
-      
-      case 'relaxed':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Ambient', 'Classical', 'Jazz', 'Acoustic', 'Meditation'].contains(genre)
-          )
-        ).toList();
-      
-      case 'happy':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Comedy', 'Pop', 'Dance', 'Family', 'Romance'].contains(genre)
-          )
-        ).toList();
-      
-      case 'sad':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Drama', 'Blues', 'Indie', 'Alternative'].contains(genre)
-          )
-        ).toList();
-      
-      case 'focused':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Documentary', 'Educational', 'Classical', 'Instrumental'].contains(genre)
-          )
-        ).toList();
-      
-      case 'romantic':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Romance', 'R&B', 'Soul', 'Pop'].contains(genre)
-          )
-        ).toList();
-      
-      case 'adventurous':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Adventure', 'Action', 'Thriller', 'Sci-Fi'].contains(genre)
-          )
-        ).toList();
-      
-      case 'nostalgic':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Classic', 'Retro', 'Vintage', 'Oldies'].contains(genre)
-          )
-        ).toList();
-      
-      default:
-        return content;
-    }
-  }
 
   void refresh() {
     loadTrendingContent();
@@ -207,133 +164,228 @@ class SearchContentNotifier extends StateNotifier<AsyncValue<List<ContentItem>>>
 class RecommendationsNotifier extends StateNotifier<AsyncValue<List<ContentItem>>> {
   RecommendationsNotifier() : super(const AsyncValue.data([]));
 
-  Future<void> loadRecommendations() async {
+  final RecommendationEngine _recommendationEngine = RecommendationEngine();
+  final FeedbackService _feedbackService = FeedbackService();
+  final MoodBasedFilteringService _moodFilteringService = MoodBasedFilteringService();
+  String _currentMood = 'neutral';
+
+  Future<void> loadRecommendations({String? mood}) async {
     state = const AsyncValue.loading();
 
     try {
+      // Update current mood if provided
+      if (mood != null) {
+        _currentMood = mood;
+      }
+
       // Get user interactions for personalized recommendations
-      final interactions = StorageService.getUserInteractions();
-      final userPreferences = StorageService.getUserPreferences();
-      final currentMood = StorageService.getCurrentMood();
-
-      // This is a simplified recommendation algorithm
-      // In a real app, this would use ML models and collaborative filtering
-      final recommendations = await _generateRecommendations(
-        interactions,
-        userPreferences,
-        currentMood,
+      final interactions = await _feedbackService.getUserInteractions(
+        userId: 'current_user', // In real app, get from auth
+        limit: 100,
       );
+      
+      final userPreferences = await _feedbackService.getUserPreferences('current_user');
+      final currentMood = mood ?? userPreferences['current_mood'] as String? ?? 'neutral';
 
-      state = AsyncValue.data(recommendations);
+      // Get available content
+      final apiService = ApiService();
+      final result = await apiService.getTrendingContent(maxResultsPerPlatform: 100);
+      
+      if (result.isSuccess && result.data != null) {
+        // Convert interactions to the format expected by recommendation engine
+        final formattedInteractions = interactions.map((interaction) => {
+          'userId': interaction.userId,
+          'contentId': interaction.contentId,
+          'rating': _convertInteractionToRating(interaction),
+          'content': _getContentFromInteraction(interaction),
+        }).toList();
+
+        // Generate AI-powered recommendations with mood filtering
+        final recommendationResults = await _recommendationEngine.generateRecommendations(
+          userId: 'current_user',
+          availableContent: result.data!,
+          userHistory: formattedInteractions,
+          userPreferences: userPreferences,
+          currentMood: currentMood,
+          maxRecommendations: 30,
+        );
+
+        // Extract content items from recommendation results
+        var recommendations = recommendationResults.map((result) => result.content).toList();
+
+        // Apply additional mood-based filtering for better results
+        if (currentMood != 'neutral' && currentMood != 'all') {
+          final moodRecommendations = await _moodFilteringService.getMoodRecommendations(
+            content: recommendations,
+            mood: currentMood,
+            maxResults: 20,
+          );
+          recommendations = moodRecommendations.map((rec) => rec.content).toList();
+        }
+
+        state = AsyncValue.data(recommendations);
+      } else {
+        state = AsyncValue.error(result.error ?? 'Failed to load recommendations', StackTrace.current);
+      }
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
     }
   }
 
-  Future<List<ContentItem>> _generateRecommendations(
-    List<Map<String, dynamic>> interactions,
-    Map<String, dynamic>? preferences,
-    String? mood,
-  ) async {
-    // Simplified recommendation logic
-    // In a real implementation, this would use ML models
-    
-    final apiService = ApiService();
-    final result = await apiService.getTrendingContent(maxResultsPerPlatform: 15);
-    
-    if (result.isSuccess && result.data != null) {
-      var recommendations = result.data!;
-      
-      // Apply user preferences
-      if (preferences != null) {
-        final preferredGenres = preferences['genres'] as List<String>? ?? [];
-        if (preferredGenres.isNotEmpty) {
-          recommendations = recommendations.where((item) =>
-            item.genres.any((genre) => preferredGenres.contains(genre))
-          ).toList();
-        }
-      }
-      
-      // Apply mood filtering
-      if (mood != null && mood != 'all') {
-        recommendations = _filterByMood(recommendations, mood);
-      }
-      
-      // Sort by rating and popularity
-      recommendations.sort((a, b) {
-        final aScore = (a.rating ?? 0) + (a.viewCount ?? 0) / 1000000.0;
-        final bScore = (b.rating ?? 0) + (b.viewCount ?? 0) / 1000000.0;
-        return bScore.compareTo(aScore);
-      });
-      
-      return recommendations.take(20).toList();
+  // Helper methods for converting interactions
+  double _convertInteractionToRating(UserInteraction interaction) {
+    switch (interaction.type) {
+      case InteractionType.like:
+        return 5.0;
+      case InteractionType.consume:
+        return 4.0;
+      case InteractionType.share:
+        return 4.5;
+      case InteractionType.save:
+        return 4.0;
+      case InteractionType.dislike:
+        return 1.0;
+      case InteractionType.skip:
+        return 2.0;
+      default:
+        return 3.0; // Neutral
     }
-    
-    return [];
   }
 
-  List<ContentItem> _filterByMood(List<ContentItem> content, String mood) {
-    // Same mood filtering logic as in TrendingContentNotifier
-    switch (mood) {
-      case 'energetic':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Action', 'Dance', 'Electronic', 'Rock', 'Pop'].contains(genre)
-          )
-        ).toList();
+  ContentItem? _getContentFromInteraction(UserInteraction interaction) {
+    // In a real implementation, you would fetch the content from storage or API
+    // For now, return null as we'll handle this differently
+    return null;
+  }
+
+  // Record user interaction with content
+  Future<void> recordInteraction({
+    required String contentId,
+    required InteractionType type,
+    Map<String, dynamic>? metadata,
+  }) async {
+    await _feedbackService.recordInteraction(
+      userId: 'current_user',
+      contentId: contentId,
+      type: type,
+      metadata: metadata,
+    );
+  }
+
+  // Record user feedback
+  Future<void> recordFeedback({
+    required String contentId,
+    required FeedbackType type,
+    required double value,
+    String? comment,
+  }) async {
+    await _feedbackService.recordFeedback(
+      userId: 'current_user',
+      contentId: contentId,
+      type: type,
+      value: value,
+      comment: comment,
+    );
+  }
+
+  // Record mood selection
+  Future<void> recordMoodSelection(String mood) async {
+    await _feedbackService.recordMoodSelection(
+      userId: 'current_user',
+      mood: mood,
+    );
+  }
+
+  // Generate mood-based playlist
+  Future<List<ContentItem>> generateMoodPlaylist(String mood) async {
+    try {
+      // Get available content
+      final apiService = ApiService();
+      final result = await apiService.getTrendingContent(maxResultsPerPlatform: 100);
       
-      case 'relaxed':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Ambient', 'Classical', 'Jazz', 'Acoustic', 'Meditation'].contains(genre)
-          )
-        ).toList();
+      if (result.isSuccess && result.data != null) {
+        return await _moodFilteringService.generateMoodPlaylist(
+          availableContent: result.data!,
+          mood: mood,
+          playlistLength: 20,
+          includeVariety: true,
+        );
+      }
       
-      case 'happy':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Comedy', 'Pop', 'Dance', 'Family', 'Romance'].contains(genre)
-          )
-        ).toList();
-      
-      case 'sad':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Drama', 'Blues', 'Indie', 'Alternative'].contains(genre)
-          )
-        ).toList();
-      
-      case 'focused':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Documentary', 'Educational', 'Classical', 'Instrumental'].contains(genre)
-          )
-        ).toList();
-      
-      case 'romantic':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Romance', 'R&B', 'Soul', 'Pop'].contains(genre)
-          )
-        ).toList();
-      
-      case 'adventurous':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Adventure', 'Action', 'Thriller', 'Sci-Fi'].contains(genre)
-          )
-        ).toList();
-      
-      case 'nostalgic':
-        return content.where((item) => 
-          item.genres.any((genre) => 
-            ['Classic', 'Retro', 'Vintage', 'Oldies'].contains(genre)
-          )
-        ).toList();
-      
-      default:
-        return content;
+      return [];
+    } catch (e) {
+      return [];
     }
   }
+
+  // Get current mood
+  String get currentMood => _currentMood;
+
+  // Mood filtering logic is now handled by the AI service
+  // List<ContentItem> _filterByMood(List<ContentItem> content, String mood) {
+  //   // Same mood filtering logic as in TrendingContentNotifier
+  //   switch (mood) {
+  //     case 'energetic':
+  //       return content.where((item) => 
+  //         item.genres.any((genre) => 
+  //           ['Action', 'Dance', 'Electronic', 'Rock', 'Pop'].contains(genre)
+  //         )
+  //       ).toList();
+  //     
+  //     case 'relaxed':
+  //       return content.where((item) => 
+  //         item.genres.any((genre) => 
+  //           ['Ambient', 'Classical', 'Jazz', 'Acoustic', 'Meditation'].contains(genre)
+  //         )
+  //       ).toList();
+  //     
+  //     case 'happy':
+  //       return content.where((item) => 
+  //         item.genres.any((genre) => 
+  //           ['Comedy', 'Pop', 'Dance', 'Family', 'Romance'].contains(genre)
+  //         )
+  //       ).toList();
+  //     
+  //     case 'sad':
+  //       return content.where((item) => 
+  //         item.genres.any((genre) => 
+  //           ['Drama', 'Blues', 'Indie', 'Alternative'].contains(genre)
+  //         )
+  //       ).toList();
+  //     
+  //     case 'focused':
+  //       return content.where((item) => 
+  //         item.genres.any((genre) => 
+  //           ['Documentary', 'Educational', 'Classical', 'Instrumental'].contains(genre)
+  //         )
+  //       ).toList();
+  //     
+  //     case 'romantic':
+  //       return content.where((item) => 
+  //         item.genres.any((genre) => 
+  //           ['Romance', 'R&B', 'Soul', 'Pop'].contains(genre)
+  //         )
+  //       ).toList();
+  //     
+  //     case 'adventurous':
+  //       return content.where((item) => 
+  //         item.genres.any((genre) => 
+  //           ['Adventure', 'Action', 'Thriller', 'Sci-Fi'].contains(genre)
+  //         )
+  //       ).toList();
+  //     
+  //     case 'nostalgic':
+  //       return content.where((item) => 
+  //         item.genres.any((genre) => 
+  //           ['Classic', 'Retro', 'Vintage', 'Oldies'].contains(genre)
+  //         )
+  //       ).toList();
+  //     
+  //     default:
+  //       return content;
+  //   }
+  // }
 }
+
+
 

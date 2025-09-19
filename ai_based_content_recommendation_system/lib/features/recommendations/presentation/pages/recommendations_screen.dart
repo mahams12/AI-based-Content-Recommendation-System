@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/models/content_model.dart';
+import '../../../home/presentation/providers/content_provider.dart';
+import '../../../home/presentation/providers/playlist_provider.dart';
+import '../../../../core/widgets/glassmorphism_card.dart';
+import '../../../../core/services/recommendation_engine.dart';
 
 class RecommendationsScreen extends ConsumerStatefulWidget {
   const RecommendationsScreen({super.key});
@@ -96,25 +101,25 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen>
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                const SizedBox(height: 60),
+                const SizedBox(height: 20),
                 
-                // Animated AI Brain Icon
-                _buildAnimatedAIIcon(),
-                
-                const SizedBox(height: 40),
-                
-                // Title Section
-                _buildTitleSection(),
+                // Header with AI Icon
+                _buildHeader(),
                 
                 const SizedBox(height: 32),
                 
-                // Features Cards
-                _buildFeaturesSection(),
+                // AI Recommendations Section
+                _buildAIRecommendationsSection(),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
                 
-                // Coming Soon Card
-                _buildComingSoonCard(),
+                // Smart Playlists Section
+                _buildSmartPlaylistsSection(),
+                
+                const SizedBox(height: 32),
+                
+                // AI Features Section
+                _buildAIFeaturesSection(),
                 
                 const SizedBox(height: 32),
                 
@@ -128,91 +133,71 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen>
     );
   }
 
-  Widget _buildAnimatedAIIcon() {
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: AnimatedBuilder(
-        animation: _floatAnimation,
-        builder: (context, child) {
-          return Transform.translate(
-            offset: Offset(0, -_floatAnimation.value),
-            child: AnimatedBuilder(
-              animation: _pulseAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _pulseAnimation.value,
-                  child: Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF667eea).withOpacity(0.5),
-                          blurRadius: 30,
-                          offset: const Offset(0, 15),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        // Background pattern
-                        Positioned.fill(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(30),
-                            child: CustomPaint(
-                              painter: _NeuralNetworkPainter(),
-                            ),
-                          ),
-                        ),
-                        // Main icon
-                        const Center(
-                          child: Icon(
-                            Icons.psychology_rounded,
-                            size: 60,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildTitleSection() {
+  Widget _buildHeader() {
     return ScaleTransition(
       scale: _scaleAnimation,
       child: Column(
         children: [
+          // Animated AI Brain Icon
+          AnimatedBuilder(
+            animation: _floatAnimation,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(0, -_floatAnimation.value),
+                child: AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _pulseAnimation.value,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF667eea).withOpacity(0.5),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.psychology_rounded,
+                            size: 40,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
           const Text(
             'AI Recommendations',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -1.2,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
             ),
-            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Text(
-            'Personalized content powered by advanced AI algorithms that learn from your preferences and mood.',
+            'Personalized content powered by advanced AI',
             style: TextStyle(
               color: Colors.grey[400],
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w400,
-              height: 1.5,
             ),
             textAlign: TextAlign.center,
           ),
@@ -221,7 +206,424 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen>
     );
   }
 
-  Widget _buildFeaturesSection() {
+  Widget _buildAIRecommendationsSection() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final recommendationsAsync = ref.watch(recommendationsProvider);
+        
+        return ScaleTransition(
+          scale: _scaleAnimation,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'For You',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      ref.read(recommendationsProvider.notifier).loadRecommendations();
+                    },
+                    icon: const Icon(
+                      Icons.refresh_rounded,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              recommendationsAsync.when(
+                data: (recommendations) {
+                  if (recommendations.isEmpty) {
+                    return _buildEmptyRecommendations();
+                  }
+                  return _buildRecommendationsGrid(recommendations);
+                },
+                loading: () => _buildLoadingRecommendations(),
+                error: (error, stack) => _buildErrorRecommendations(error.toString()),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSmartPlaylistsSection() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final playlistsAsync = ref.watch(smartPlaylistProvider);
+        
+        return ScaleTransition(
+          scale: _scaleAnimation,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Smart Playlists',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      ref.read(smartPlaylistProvider.notifier).loadSmartPlaylists();
+                    },
+                    icon: const Icon(
+                      Icons.refresh_rounded,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              playlistsAsync.when(
+                data: (playlists) {
+                  if (playlists.isEmpty) {
+                    return _buildEmptyPlaylists();
+                  }
+                  return _buildPlaylistsList(playlists);
+                },
+                loading: () => _buildLoadingPlaylists(),
+                error: (error, stack) => _buildErrorPlaylists(error.toString()),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRecommendationsGrid(List<ContentItem> recommendations) {
+    return SizedBox(
+      height: 200,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: recommendations.length,
+        itemBuilder: (context, index) {
+          final content = recommendations[index];
+          return Container(
+            width: 150,
+            margin: const EdgeInsets.only(right: 16),
+            child: GlassmorphismCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      content.thumbnailUrl,
+                      height: 100,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 100,
+                          color: Colors.grey[800],
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    content.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    content.platform.name.toUpperCase(),
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPlaylistsList(List<SmartPlaylist> playlists) {
+    return Column(
+      children: playlists.map((playlist) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: GlassmorphismCard(
+            child: ListTile(
+              leading: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.playlist_play_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              title: Text(
+                playlist.name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: Text(
+                '${playlist.content.length} items • ${playlist.type}',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                ),
+              ),
+              trailing: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: Colors.grey,
+                size: 16,
+              ),
+              onTap: () {
+                // Navigate to playlist details
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Opening ${playlist.name}'),
+                    backgroundColor: const Color(0xFF667eea),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildEmptyRecommendations() {
+    return Container(
+      height: 200,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2128),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey[800]!.withOpacity(0.3),
+        ),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.psychology_rounded,
+              size: 48,
+              color: Colors.grey,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No recommendations yet',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Start exploring content to get personalized recommendations',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyPlaylists() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2128),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey[800]!.withOpacity(0.3),
+        ),
+      ),
+      child: const Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.playlist_add_rounded,
+              size: 48,
+              color: Colors.grey,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No smart playlists yet',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'AI will create personalized playlists based on your preferences',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingRecommendations() {
+    return Container(
+      height: 200,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2128),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF667eea),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingPlaylists() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2128),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF667eea),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorRecommendations(String error) {
+    return Container(
+      height: 200,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2128),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load recommendations',
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorPlaylists(String error) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2128),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(
+        child: Column(
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load playlists',
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAIFeaturesSection() {
     final features = [
       {
         'icon': Icons.auto_awesome_rounded,
@@ -243,187 +645,103 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen>
       },
     ];
 
-    return Column(
-      children: features.asMap().entries.map((entry) {
-        final index = entry.key;
-        final feature = entry.value;
-        
-        return AnimatedBuilder(
-          animation: _slideController,
-          builder: (context, child) {
-            return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.3, 0),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: _slideController,
-                curve: Interval(
-                  (index * 0.1).clamp(0.0, 1.0),
-                  1.0,
-                  curve: Curves.easeOutBack,
-                ),
-              )),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1C2128),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.grey[800]!.withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'AI Features',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Column(
+            children: features.asMap().entries.map((entry) {
+              final index = entry.key;
+              final feature = entry.value;
+              
+              return AnimatedBuilder(
+                animation: _slideController,
+                builder: (context, child) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.3, 0),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: _slideController,
+                      curve: Interval(
+                        (index * 0.1).clamp(0.0, 1.0),
+                        1.0,
+                        curve: Curves.easeOutBack,
+                      ),
+                    )),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: (feature['color'] as Color).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        color: const Color(0xFF1C2128),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.grey[800]!.withOpacity(0.3),
+                        ),
                       ),
-                      child: Icon(
-                        feature['icon'] as IconData,
-                        color: feature['color'] as Color,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Text(
-                            feature['title'] as String,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: (feature['color'] as Color).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              feature['icon'] as IconData,
+                              color: feature['color'] as Color,
+                              size: 24,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            feature['description'] as String,
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  feature['title'] as String,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  feature['description'] as String,
+                                  style: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildComingSoonCard() {
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+                  );
+                },
+              );
+            }).toList(),
           ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF667eea).withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.rocket_launch_rounded,
-                size: 30,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Coming Soon',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Advanced AI algorithms are being trained to provide you with the most accurate and personalized content recommendations.',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('You\'ll be notified when AI recommendations are ready!'),
-                    backgroundColor: Color(0xFF667eea),
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(25),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.3),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.notifications_active_rounded,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Notify Me',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
+
 
   Widget _buildAILearningSection() {
     return ScaleTransition(
@@ -519,44 +837,4 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen>
   }
 }
 
-// Custom painter for neural network pattern - Fixed with proper closing brace
-class _NeuralNetworkPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
 
-    // Draw connected nodes pattern
-    const nodePositions = [
-      Offset(20, 30),
-      Offset(60, 20),
-      Offset(100, 35),
-      Offset(30, 70),
-      Offset(80, 60),
-      Offset(90, 90),
-    ];
-
-    // Draw connections
-    for (int i = 0; i < nodePositions.length; i++) {
-      for (int j = i + 1; j < nodePositions.length; j++) {
-        if ((nodePositions[i] - nodePositions[j]).distance < 60) {
-          canvas.drawLine(nodePositions[i], nodePositions[j], paint);
-        }
-      }
-    }
-
-    // Draw nodes
-    final nodePaint = Paint()
-      ..color = Colors.white.withOpacity(0.2)
-      ..style = PaintingStyle.fill;
-
-    for (final position in nodePositions) {
-      canvas.drawCircle(position, 3, nodePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

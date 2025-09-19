@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/content_model.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/widgets/media_player.dart';
 import '../providers/search_provider.dart';
 import '../widgets/search_result_card.dart';
 
@@ -281,12 +282,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       action: 'view',
     );
 
-    // TODO: Navigate to content detail screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening ${content.title}...'),
-        duration: const Duration(seconds: 2),
-      ),
+    // Open media player
+    showDialog(
+      context: context,
+      builder: (context) => MediaPlayer(content: content),
     );
   }
 

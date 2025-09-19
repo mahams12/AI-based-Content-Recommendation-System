@@ -37,6 +37,7 @@ class _AnimatedButtonState extends State<AnimatedButton>
   late AnimationController _rippleController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rippleAnimation;
+  Offset _rippleCenter = Offset.zero;
 
   @override
   void initState() {
@@ -77,6 +78,7 @@ class _AnimatedButtonState extends State<AnimatedButton>
   }
 
   void _handleTapDown(TapDownDetails details) {
+    _rippleCenter = details.localPosition;
     _scaleController.forward();
   }
 
@@ -106,34 +108,42 @@ class _AnimatedButtonState extends State<AnimatedButton>
             onTapDown: _handleTapDown,
             onTapUp: _handleTapUp,
             onTapCancel: _handleTapCancel,
-            child: Container(
-              width: widget.width,
-              height: widget.height,
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                boxShadow: [
-                  BoxShadow(
-                    color: backgroundColor.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Stack(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+              child: Container(
+                width: widget.width,
+                height: widget.height,
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+                  boxShadow: [
+                    BoxShadow(
+                      color: backgroundColor.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Stack(
                 children: [
                   // Ripple effect
                   if (_rippleAnimation.value > 0)
                     Positioned.fill(
-                      child: CustomPaint(
-                        painter: RipplePainter(
-                          center: Offset(
-                            widget.width != null ? widget.width! / 2 : 0,
-                            widget.height / 2,
-                          ),
-                          radius: _rippleAnimation.value * 100,
-                          color: Colors.white.withOpacity(0.3),
-                        ),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Calculate maximum ripple radius based on button dimensions
+                          final maxRadius = (constraints.maxWidth > constraints.maxHeight 
+                              ? constraints.maxHeight 
+                              : constraints.maxWidth) / 2;
+                          
+                          return CustomPaint(
+                            painter: RipplePainter(
+                              center: _rippleCenter,
+                              radius: _rippleAnimation.value * maxRadius,
+                              color: Colors.white.withOpacity(0.3),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   // Button content
@@ -172,6 +182,7 @@ class _AnimatedButtonState extends State<AnimatedButton>
                 ],
               ),
             ),
+            ),
           ),
         );
       },
@@ -204,3 +215,7 @@ class RipplePainter extends CustomPainter {
     return true;
   }
 }
+
+
+
+

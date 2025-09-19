@@ -103,3 +103,7 @@ The app now runs perfectly in demo mode, showcasing all the core features of the
 
 **The app is now fully functional and ready for testing!** 🚀
 
+
+
+
+
