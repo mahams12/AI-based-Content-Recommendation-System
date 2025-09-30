@@ -145,7 +145,9 @@ class _MoodSelectorState extends State<MoodSelector> with TickerProviderStateMix
               size: 20,
             ),
             const SizedBox(width: 8),
-            Text('Detected mood: ${_getMoodDisplayName(result.mood)}'),
+            Text('Detected mood: ${_getMoodDisplayName(result.mood)}',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
           ],
         ),
         backgroundColor: const Color(0xFF667eea),
@@ -158,7 +160,10 @@ class _MoodSelectorState extends State<MoodSelector> with TickerProviderStateMix
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+        ),
         backgroundColor: Colors.red[600],
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

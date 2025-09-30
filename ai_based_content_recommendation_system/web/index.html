@@ -19,6 +19,10 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
+  
+  <!-- Fix Cross-Origin-Opener-Policy for Google Sign-In -->
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+  <meta http-equiv="Cross-Origin-Embedder-Policy" content="unsafe-none">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -29,8 +33,63 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>ai_based_content_recommendation_system</title>
+  <title>Content Nation - AI-Powered Content Discovery</title>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
+  <!-- Google Sign-In Configuration -->
+  <script>
+    // Configure Google Identity Services to avoid FedCM issues
+    window.googleSignInConfig = {
+      client_id: '597878741733-94oh71atkf557uqhrveuaocgcaanacmc.apps.googleusercontent.com',
+      callback: function(response) {
+        console.log('Google Sign-In callback:', response);
+      },
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      use_fedcm_for_prompt: false, // Disable FedCM to avoid network errors
+      ux_mode: 'popup' // Use popup mode instead of redirect
+    };
+    
+    // Initialize Google Identity Services with FedCM disabled
+    window.addEventListener('load', function() {
+      if (window.google && window.google.accounts) {
+        window.google.accounts.id.initialize({
+          client_id: '597878741733-94oh71atkf557uqhrveuaocgcaanacmc.apps.googleusercontent.com',
+          use_fedcm_for_prompt: false,
+          ux_mode: 'popup'
+        });
+      }
+    });
+  </script>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  
+  <!-- Firebase Configuration -->
+  <script>
+    // Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyDHGl5TIrV8tSzoYd4QkDODPKqEe6bI3oM",
+      authDomain: "content-nation-e0549.firebaseapp.com",
+      projectId: "content-nation-e0549",
+      storageBucket: "content-nation-e0549.firebasestorage.app",
+      messagingSenderId: "113881222128",
+      appId: "1:113881222128:web:cff5b77c7ebabd929eab35",
+      measurementId: "G-2Q8WXS5FKZ"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    
+    // Configure Google Sign-In for web
+    window.googleSignInConfig = {
+      client_id: '597878741733-94oh71atkf557uqhrveuaocgcaanacmc.apps.googleusercontent.com',
+      redirect_uri: window.location.origin + '/oauth2redirect'
+    };
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/content_model.dart';
 import 'ai_service.dart';
-import 'recommendation_engine.dart';
 
 /// Feedback Service for collecting user interactions and improving recommendations
 class FeedbackService {
@@ -12,7 +11,6 @@ class FeedbackService {
   FeedbackService._internal();
 
   final AIService _aiService = AIService();
-  final RecommendationEngine _recommendationEngine = RecommendationEngine();
 
   // Storage keys
   static const String _userInteractionsKey = 'user_interactions';

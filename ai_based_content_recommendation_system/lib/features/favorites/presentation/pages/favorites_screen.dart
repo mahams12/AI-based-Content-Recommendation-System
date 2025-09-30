@@ -39,7 +39,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error loading favorites: $e'),
+          content: Text(
+            'Error loading favorites: $e',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -54,14 +57,20 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Removed from favorites'),
+          content: Text(
+            'Removed from favorites',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
           backgroundColor: Color(0xFF667eea),
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error removing from favorites: $e'),
+          content: Text(
+            'Error removing from favorites: $e',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
           backgroundColor: Colors.red,
         ),
       );

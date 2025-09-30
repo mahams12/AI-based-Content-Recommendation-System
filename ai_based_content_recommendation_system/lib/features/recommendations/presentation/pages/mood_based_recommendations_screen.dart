@@ -82,7 +82,10 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
     if (_selectedMood == 'all') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a specific mood to generate a playlist'),
+          content: Text(
+            'Please select a specific mood to generate a playlist',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -105,7 +108,10 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
       if (playlist.isNotEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Generated ${playlist.length} items for your $_selectedMood mood!'),
+            content: Text(
+              'Generated ${playlist.length} items for your $_selectedMood mood!',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
             backgroundColor: const Color(0xFF667eea),
             behavior: SnackBarBehavior.floating,
           ),
@@ -118,7 +124,10 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to generate playlist: $e'),
+            content: Text(
+              'Failed to generate playlist: $e',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
             backgroundColor: Colors.red,
           ),
         );

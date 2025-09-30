@@ -8,7 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../lib/main.dart';
+import 'package:content_nation/main.dart';
 
 void main() {
   testWidgets('App loads without crashing', (WidgetTester tester) async {

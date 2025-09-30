@@ -53,7 +53,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account created successfully! Welcome to Content Nation!'),
+            content: Text(
+              'Account created successfully! Welcome to Content Nation!',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -62,7 +65,46 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text(
+              e.toString(),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final userCredential = await ref.read(authServiceProvider).signInWithGoogle();
+      
+      if (userCredential != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Welcome! Signed in with Google successfully.',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.toString(),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -282,14 +324,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             width: double.infinity,
                             child: AnimatedButton(
                               text: 'Continue with Google',
-                              onPressed: _isLoading ? null : () {
-                                // TODO: Implement Google Sign In
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Google Sign In coming soon!'),
-                                  ),
-                                );
-                              },
+                              onPressed: _isLoading ? null : _signInWithGoogle,
                               backgroundColor: Colors.white,
                               textColor: Colors.black87,
                               icon: Icons.g_mobiledata,

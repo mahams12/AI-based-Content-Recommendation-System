@@ -6,6 +6,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/animated_logo.dart';
 import '../../../../core/widgets/animated_button.dart';
 import '../../../../core/widgets/glassmorphism_card.dart';
+import '../../../../core/widgets/google_sign_in_button.dart';
 import '../providers/auth_provider.dart';
 import 'register_screen.dart';
 
@@ -44,7 +45,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Welcome back!'),
+            content: Text(
+              'Welcome back!',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -53,7 +57,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text(
+              e.toString(),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -65,11 +72,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+
   Future<void> _resetPassword() async {
     if (_emailController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter your email address first'),
+          content: Text(
+            'Please enter your email address first',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -84,7 +95,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Password reset email sent! Check your inbox.'),
+            content: Text(
+              'Password reset email sent! Check your inbox.',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -93,7 +107,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text(
+              e.toString(),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -308,23 +325,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 16),
                           
                           // Google Sign In Button
-                          SizedBox(
-                            width: double.infinity,
-                            child: AnimatedButton(
-                              text: 'Continue with Google',
-                              onPressed: _isLoading ? null : () {
-                                // TODO: Implement Google Sign In
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Google Sign In coming soon!'),
+                          GoogleSignInButton(
+                            isLoading: _isLoading,
+                            onSuccess: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Welcome! Signed in with Google successfully.',
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                                   ),
-                                );
-                              },
-                              backgroundColor: AppTheme.glassBackground,
-                              textColor: Colors.white,
-                              icon: Icons.g_mobiledata,
-                              height: 50,
-                            ),
+                                  backgroundColor: AppTheme.successColor,
+                                ),
+                              );
+                            },
+                            onError: (error) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    error,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                                  ),
+                                  backgroundColor: AppTheme.errorColor,
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

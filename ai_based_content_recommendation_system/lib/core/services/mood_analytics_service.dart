@@ -9,7 +9,6 @@ class MoodAnalyticsService {
 
   static const String _moodDataKey = 'mood_analytics_data';
   static const String _moodHistoryKey = 'mood_history';
-  static const String _moodInsightsKey = 'mood_insights';
 
   /// Record a mood selection with timestamp and context
   Future<void> recordMoodSelection({

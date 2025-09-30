@@ -350,7 +350,10 @@ class _MediaPlayerState extends State<MediaPlayer> {
       case ContentType.tmdb:
         return 'View Details';
       case ContentType.spotify:
-        return 'Play on Spotify';
+        if (widget.content.audioUrl != null && widget.content.audioUrl!.isNotEmpty) {
+          return _isPlaying ? 'Pause Preview' : 'Play Preview';
+        }
+        return 'Open in Spotify';
     }
   }
 
@@ -360,7 +363,32 @@ class _MediaPlayerState extends State<MediaPlayer> {
     });
 
     try {
-      // Get the appropriate URL for the platform
+      // Handle Spotify tracks with audio preview
+      if (widget.content.platform == ContentType.spotify && 
+          widget.content.audioUrl != null && 
+          widget.content.audioUrl!.isNotEmpty) {
+        // Play the audio preview directly
+        setState(() {
+          _isPlaying = !_isPlaying;
+        });
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isPlaying 
+                ? 'Playing preview: ${widget.content.title}'
+                : 'Preview paused'),
+            backgroundColor: const Color(0xFF1DB954),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        return;
+      }
+
+      // For other platforms or Spotify without preview, open external URL
       String url;
       
       switch (widget.content.platform) {
@@ -369,6 +397,11 @@ class _MediaPlayerState extends State<MediaPlayer> {
                 'https://www.youtube.com/watch?v=${widget.content.id}';
           break;
         case ContentType.spotify:
+          // If no preview available, show message
+          if (widget.content.audioUrl == null || widget.content.audioUrl!.isEmpty) {
+            _showError('No preview available for this track. Please visit Spotify to listen.');
+            return;
+          }
           url = widget.content.externalUrl ?? 
                 'https://open.spotify.com/track/${widget.content.id}';
           break;

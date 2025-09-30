@@ -298,12 +298,22 @@ class ProfileScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
+        backgroundColor: const Color(0xFF1C2128),
+        title: const Text(
+          'Sign Out',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        content: const Text(
+          'Are you sure you want to sign out?',
+          style: TextStyle(color: Colors.white),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -312,14 +322,20 @@ class ProfileScreen extends ConsumerWidget {
                 await ref.read(authServiceProvider).signOut();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Signed out successfully'),
+                    content: Text(
+                      'Signed out successfully',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                    ),
                     backgroundColor: AppTheme.successColor,
                   ),
                 );
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Sign out failed: $e'),
+                    content: Text(
+                      'Sign out failed: $e',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                    ),
                     backgroundColor: AppTheme.errorColor,
                   ),
                 );
@@ -328,7 +344,10 @@ class ProfileScreen extends ConsumerWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.errorColor,
             ),
-            child: const Text('Sign Out'),
+            child: const Text(
+              'Sign Out',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),

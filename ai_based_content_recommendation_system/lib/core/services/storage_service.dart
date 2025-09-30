@@ -104,7 +104,7 @@ class StorageService {
       timestamp = _contentBox.get('${key}_timestamp') as int?;
     }
     
-    if (contentJson == null || timestamp == null) return null;
+    if (timestamp == null) return null;
 
     // Check if cache is expired (24 hours)
     final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -120,6 +120,8 @@ class StorageService {
       return null;
     }
 
+    if (contentJson == null) return null;
+    
     try {
       final List<dynamic> contentList = jsonDecode(contentJson);
       return contentList.map((json) => ContentItemJson.fromJson(json)).toList();
@@ -150,9 +152,9 @@ class StorageService {
     } else {
       preferencesJson = _userBox.get('preferences');
     }
-    
-    if (preferencesJson == null) return null;
 
+    if (preferencesJson == null) return null;
+    
     try {
       return jsonDecode(preferencesJson);
     } catch (e) {
@@ -290,9 +292,9 @@ class StorageService {
     } else {
       settingsJson = _userBox.get('app_settings');
     }
-    
-    if (settingsJson == null) return null;
 
+    if (settingsJson == null) return null;
+    
     try {
       return jsonDecode(settingsJson);
     } catch (e) {

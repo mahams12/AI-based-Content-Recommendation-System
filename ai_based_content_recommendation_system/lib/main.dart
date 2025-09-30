@@ -17,7 +17,6 @@ import 'features/profile/presentation/pages/profile_screen.dart';
 import 'core/services/api_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/models/content_model.dart';
-import 'core/widgets/media_player.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

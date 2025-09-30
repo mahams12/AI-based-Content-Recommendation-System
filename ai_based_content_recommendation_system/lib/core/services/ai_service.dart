@@ -512,14 +512,6 @@ class AIService {
     return 'neutral';
   }
 
-  String _getTimeOfDay(DateTime? timestamp) {
-    if (timestamp == null) return 'unknown';
-    final hour = timestamp.hour;
-    if (hour >= 6 && hour < 12) return 'morning';
-    if (hour >= 12 && hour < 18) return 'afternoon';
-    if (hour >= 18 && hour < 22) return 'evening';
-    return 'night';
-  }
 
   double _calculateTimeWeight(DateTime? timestamp) {
     if (timestamp == null) return 0.5;

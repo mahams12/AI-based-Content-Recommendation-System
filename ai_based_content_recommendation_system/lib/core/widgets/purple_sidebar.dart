@@ -67,17 +67,7 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
       case 0: // Home
         widget.onTap(0);
         break;
-      case 1: // Trending
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Navigate to Trending'),
-            backgroundColor: Color(0xFF667eea),
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        break;
-      case 2: // Mood-Based Recommendations
+      case 1: // Mood-Based Recommendations
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -85,7 +75,7 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
           ),
         );
         break;
-      case 3: // History
+      case 2: // History
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -93,7 +83,7 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
           ),
         );
         break;
-      case 4: // Favorites
+      case 3: // Favorites
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -101,7 +91,7 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
           ),
         );
         break;
-      case 5: // My Playlists
+      case 4: // My Playlists
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Navigate to My Playlists'),
@@ -222,11 +212,10 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     children: [
                       _buildNavItem(Icons.home_rounded, 'Home', 0),
-                      _buildNavItem(Icons.trending_up_rounded, 'Trending', 1),
-                      _buildNavItem(Icons.mood_rounded, 'Mood-Based Recommendations', 2),
-                      _buildNavItem(Icons.history_rounded, 'History', 3),
-                      _buildNavItem(Icons.favorite_rounded, 'Favorites', 4),
-                      _buildNavItem(Icons.playlist_play_rounded, 'My Playlists', 5),
+                      _buildNavItem(Icons.mood_rounded, 'Mood-Based Recommendations', 1),
+                      _buildNavItem(Icons.history_rounded, 'History', 2),
+                      _buildNavItem(Icons.favorite_rounded, 'Favorites', 3),
+                      _buildNavItem(Icons.playlist_play_rounded, 'My Playlists', 4),
                     ],
                   ),
                 ),

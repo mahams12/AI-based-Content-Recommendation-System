@@ -178,6 +178,37 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
+      // SnackBar Theme for better visibility
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: const Color(0xFF2D3748),
+        contentTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        behavior: SnackBarBehavior.floating,
+        elevation: 8,
+      ),
+      // Dialog Theme for better visibility
+      dialogTheme: const DialogThemeData(
+        backgroundColor: Color(0xFF1C2128),
+        titleTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+        contentTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
+        elevation: 8,
+      ),
     );
   }
 
@@ -321,6 +352,37 @@ class AppTheme {
         selectedItemColor: primaryColor,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
+        elevation: 8,
+      ),
+      // SnackBar Theme for better visibility
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: const Color(0xFF2D3748),
+        contentTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        behavior: SnackBarBehavior.floating,
+        elevation: 8,
+      ),
+      // Dialog Theme for better visibility
+      dialogTheme: const DialogThemeData(
+        backgroundColor: Color(0xFF1C2128),
+        titleTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+        contentTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
         elevation: 8,
       ),
     );
