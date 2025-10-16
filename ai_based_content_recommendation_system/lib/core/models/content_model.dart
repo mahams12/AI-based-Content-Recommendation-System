@@ -34,6 +34,8 @@ class ContentItem extends Equatable {
   final String? channelName;
   final String? artistName;
   final String? albumName;
+  final String? contentType;
+  final String? videoFormat;
   final Map<String, dynamic>? metadata;
 
   const ContentItem({
@@ -56,6 +58,8 @@ class ContentItem extends Equatable {
     this.channelName,
     this.artistName,
     this.albumName,
+    this.contentType,
+    this.videoFormat,
     this.metadata,
   });
 
@@ -78,6 +82,8 @@ class ContentItem extends Equatable {
       platform: ContentType.youtube,
       category: ContentCategory.video,
       channelName: snippet['channelTitle'] ?? '',
+      contentType: 'Video',
+      videoFormat: 'Standard',
       publishedAt: snippet['publishedAt'] != null 
           ? DateTime.tryParse(snippet['publishedAt']) 
           : null,
@@ -105,6 +111,8 @@ class ContentItem extends Equatable {
       platform: ContentType.youtube,
       category: ContentCategory.video,
       channelName: snippet['channelTitle'] ?? '',
+      contentType: 'Video',
+      videoFormat: 'Standard',
       viewCount: int.tryParse(statistics['viewCount'] ?? '0'),
       likeCount: int.tryParse(statistics['likeCount'] ?? '0'),
       publishedAt: snippet['publishedAt'] != null 
@@ -119,7 +127,7 @@ class ContentItem extends Equatable {
     final posterPath = json['poster_path'] ?? json['backdrop_path'];
     final thumbnailUrl = posterPath != null 
         ? 'https://image.tmdb.org/t/p/w500$posterPath'
-        : 'https://via.placeholder.com/300x450';
+        : 'https://images.unsplash.com/photo-1489599905202-4e7b9d7e8b7e?w=300&h=450&fit=crop&crop=center';
     
     ContentCategory category;
     if (type == 'movie' || json['media_type'] == 'movie') {
@@ -141,6 +149,8 @@ class ContentItem extends Equatable {
           ?.map((id) => id.toString())
           .toList() ?? [],
       rating: (json['vote_average'] as num?)?.toDouble(),
+      contentType: category == ContentCategory.movie ? 'Movie' : 'TV Show',
+      videoFormat: 'Standard',
       publishedAt: json['release_date'] != null 
           ? DateTime.tryParse(json['release_date']) 
           : (json['first_air_date'] != null 
@@ -156,7 +166,7 @@ class ContentItem extends Equatable {
     final images = album['images'] as List<dynamic>? ?? [];
     final thumbnailUrl = images.isNotEmpty 
         ? images.first['url'] 
-        : 'https://via.placeholder.com/300x300';
+        : 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center';
     
     final artists = json['artists'] as List<dynamic>? ?? [];
     final artistNames = artists.map((artist) => artist['name']).join(', ');
@@ -170,7 +180,7 @@ class ContentItem extends Equatable {
       title: json['name'] ?? '',
       description: 'Track by $artistNames',
       thumbnailUrl: thumbnailUrl,
-      audioUrl: json['preview_url'],
+      audioUrl: null, // No preview playback - only recommendations
       externalUrl: json['external_urls']?['spotify'],
       platform: ContentType.spotify,
       category: ContentCategory.music,
@@ -178,6 +188,8 @@ class ContentItem extends Equatable {
       durationSeconds: duration.inSeconds,
       artistName: artistNames,
       albumName: album['name'],
+      contentType: 'Music',
+      videoFormat: null,
       metadata: json,
     );
   }
@@ -187,7 +199,7 @@ class ContentItem extends Equatable {
     final images = json['images'] as List<dynamic>? ?? [];
     final thumbnailUrl = images.isNotEmpty 
         ? images.first['url'] 
-        : 'https://via.placeholder.com/300x300';
+        : 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center';
     
     final tracks = json['tracks'] ?? {};
     final trackCount = tracks['total'] as int? ?? 0;
@@ -200,6 +212,8 @@ class ContentItem extends Equatable {
       externalUrl: json['external_urls']?['spotify'],
       platform: ContentType.spotify,
       category: ContentCategory.playlist,
+      contentType: 'Playlist',
+      videoFormat: null,
       metadata: json,
     );
   }
@@ -226,6 +240,8 @@ class ContentItem extends Equatable {
       'channelName': channelName,
       'artistName': artistName,
       'albumName': albumName,
+      'contentType': contentType,
+      'videoFormat': videoFormat,
       'metadata': metadata,
     };
   }
@@ -251,6 +267,8 @@ class ContentItem extends Equatable {
     String? channelName,
     String? artistName,
     String? albumName,
+    String? contentType,
+    String? videoFormat,
     Map<String, dynamic>? metadata,
   }) {
     return ContentItem(
@@ -273,6 +291,8 @@ class ContentItem extends Equatable {
       channelName: channelName ?? this.channelName,
       artistName: artistName ?? this.artistName,
       albumName: albumName ?? this.albumName,
+      contentType: contentType ?? this.contentType,
+      videoFormat: videoFormat ?? this.videoFormat,
       metadata: metadata ?? this.metadata,
     );
   }
@@ -298,6 +318,8 @@ class ContentItem extends Equatable {
         channelName,
         artistName,
         albumName,
+        contentType,
+        videoFormat,
         metadata,
       ];
 }

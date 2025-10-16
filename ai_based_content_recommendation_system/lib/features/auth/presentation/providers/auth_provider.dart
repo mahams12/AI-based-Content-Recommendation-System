@@ -89,11 +89,12 @@ class AuthService {
     try {
       print('Starting Google Sign-In process...');
       
-      // Check if user is already signed in
-      final GoogleSignInAccount? currentUser = _googleSignIn.currentUser;
-      if (currentUser != null) {
-        print('User already signed in, signing out first...');
+      // Always sign out first to ensure clean state
+      try {
         await _googleSignIn.signOut();
+        print('Signed out from previous session');
+      } catch (e) {
+        print('Sign out error (ignoring): $e');
       }
 
       GoogleSignInAccount? googleUser;
@@ -110,7 +111,7 @@ class AuthService {
       
       if (googleUser == null) {
         print('Google Sign-In cancelled by user');
-        throw 'Google Sign-In was cancelled by user.';
+        return null; // Return null instead of throwing for user cancellation
       }
       
       print('Google Sign-In successful, user: ${googleUser.email}');
@@ -123,7 +124,11 @@ class AuthService {
       if (e.code == 'account-exists-with-different-credential') {
         throw 'An account already exists with the same email address but different sign-in credentials.';
       } else if (e.code == 'invalid-credential') {
-        throw 'The credential is invalid or has expired. Please try again.';
+        // Clear any cached credentials and suggest retry
+        try {
+          await _googleSignIn.signOut();
+        } catch (_) {}
+        throw 'Authentication failed. Please try signing in again.';
       } else if (e.code == 'operation-not-allowed') {
         throw 'Google Sign-In is not enabled. Please enable it in Firebase Console.';
       } else if (e.code == 'user-disabled') {

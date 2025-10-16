@@ -49,7 +49,7 @@ flutter pub get
 
 4. Configure API Keys:
    - Update API keys in `lib/core/constants/app_constants.dart`
-   - YouTube API Key: `AIzaSyBO0T2TJ5nWb3zKgwrQ3J3dIxK1QC_2t0A`
+   - YouTube API Key: `AIzaSyDdwTVftDl6nRqRuofWlfx1p8-enTPNFnc`
    - Spotify Client ID: `071b9c2312f64b2495e7135f3dfbf317`
    - TMDB API Key: `146bd026e1a4e8b5998458984ac771ce`
 

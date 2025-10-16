@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/models/content_model.dart';
+import '../../../../core/widgets/safe_network_image.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../welcome/presentation/widgets/mood_assessment_widget.dart';
+import '../../../welcome/presentation/providers/mood_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -49,11 +53,12 @@ class ProfileScreen extends ConsumerWidget {
                   backgroundColor: Colors.white,
                   child: user.photoURL != null
                       ? ClipOval(
-                          child: Image.network(
-                            user.photoURL!,
+                          child: SafeNetworkImage(
+                            imageUrl: user.photoURL!,
                             width: 100,
                             height: 100,
                             fit: BoxFit.cover,
+                            platform: ContentType.spotify, // Default platform for profile images
                           ),
                         )
                       : Icon(
@@ -118,16 +123,20 @@ class ProfileScreen extends ConsumerWidget {
           },
         ),
         
-        // Mood Settings
-        _buildSettingsTile(
-          context,
-          icon: Icons.mood,
-          title: 'Mood Settings',
-          subtitle: 'Configure mood detection',
-          onTap: () {
-            // TODO: Navigate to mood settings
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Mood settings coming soon!')),
+        // Mood Assessment
+        Consumer(
+          builder: (context, ref, child) {
+            final hasMoodData = ref.watch(hasMoodDataProvider);
+            final isRecent = ref.watch(isMoodDataRecentProvider);
+            
+            return _buildSettingsTile(
+              context,
+              icon: Icons.psychology_rounded,
+              title: 'Mood Assessment',
+              subtitle: hasMoodData 
+                  ? (isRecent ? 'Update your mood preferences' : 'Your mood data is outdated')
+                  : 'Take mood assessment for better recommendations',
+              onTap: () => _showMoodAssessmentDialog(context, ref),
             );
           },
         ),
@@ -293,6 +302,30 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+
+  void _showMoodAssessmentDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => MoodAssessmentDialog(
+        onCompleted: (moodData) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Mood assessment completed!',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+              ),
+              backgroundColor: AppTheme.successColor,
+            ),
+          );
+        },
+        onSkip: () {
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
 
   void _showSignOutDialog(BuildContext context, WidgetRef ref) {
     showDialog(

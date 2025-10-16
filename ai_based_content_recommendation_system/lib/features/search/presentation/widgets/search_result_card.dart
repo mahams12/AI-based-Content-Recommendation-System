@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/content_model.dart';
+import '../../../../core/widgets/safe_network_image.dart';
 
 class SearchResultCard extends StatelessWidget {
   final ContentItem content;
@@ -36,28 +36,13 @@ class SearchResultCard extends StatelessWidget {
               // Thumbnail
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
+                child: SafeNetworkImage(
                   imageUrl: content.thumbnailUrl,
                   width: 80,
                   height: 80,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey[300],
-                    child: const Icon(
-                      Icons.error_outline,
-                      color: Colors.grey,
-                    ),
-                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  platform: content.platform,
                 ),
               ),
               

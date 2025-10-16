@@ -222,8 +222,7 @@ class _TrendingContentScrollerState extends State<TrendingContentScroller>
     setState(() {
       _selectedGenre = genre;
     });
-    // Reload content when genre changes
-    _loadMoreContent();
+    // Content will be filtered automatically by the existing filter logic
   }
 
   @override
@@ -244,8 +243,10 @@ class _TrendingContentScrollerState extends State<TrendingContentScroller>
               ),
             if (widget.platform == ContentType.tmdb)
               TMDBGenreFilter(
-                selectedGenre: _selectedGenre,
-                onGenreChanged: _onGenreChanged,
+                selectedGenres: _selectedGenre != null ? [_selectedGenre!] : [],
+                onGenresChanged: (genres) {
+                  _onGenreChanged(genres.isNotEmpty ? genres.first : null);
+                },
               ),
             Expanded(
               child: SlideTransition(

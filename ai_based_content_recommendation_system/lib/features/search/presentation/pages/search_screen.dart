@@ -19,11 +19,17 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  bool _hasText = false;
 
   @override
   void initState() {
     super.initState();
     _searchFocusNode.requestFocus();
+    _searchController.addListener(() {
+      setState(() {
+        _hasText = _searchController.text.isNotEmpty;
+      });
+    });
   }
 
   @override
@@ -69,7 +75,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 decoration: InputDecoration(
                   hintText: 'Search YouTube, Spotify, Movies...',
                   prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isNotEmpty
+                  suffixIcon: _hasText
                       ? IconButton(
                           icon: const Icon(Icons.clear),
                           onPressed: () {
@@ -87,7 +93,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
                 onSubmitted: _performSearch,
                 onChanged: (value) {
-                  setState(() {});
+                  // Remove unnecessary setState call to prevent infinite rebuilds
                   if (value.trim().isNotEmpty) {
                     _performSearch(value);
                   } else {

@@ -1,21 +1,56 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:content_nation/main.dart';
+import 'package:content_nation/core/widgets/safe_network_image.dart';
+import 'package:content_nation/core/models/content_model.dart';
 
 void main() {
-  testWidgets('App loads without crashing', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('SafeNetworkImage Tests', () {
+    testWidgets('should display placeholder for empty URL', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SafeNetworkImage(
+              imageUrl: '',
+              platform: ContentType.spotify,
+            ),
+          ),
+        ),
+      );
 
-    // Verify that the app loads
-    expect(find.byType(MaterialApp), findsOneWidget);
+      // Should show platform-specific placeholder
+      expect(find.byIcon(Icons.music_note), findsOneWidget);
+    });
+
+    testWidgets('should display error widget for invalid URL', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SafeNetworkImage(
+              imageUrl: 'invalid-url',
+              platform: ContentType.youtube,
+            ),
+          ),
+        ),
+      );
+
+      // Should show error icon
+      expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    });
+
+    testWidgets('should display placeholder image for valid placeholder URL', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SafeNetworkImage(
+              imageUrl: 'https://via.placeholder.com/300x300/1db954/ffffff?text=Test',
+              platform: ContentType.tmdb,
+            ),
+          ),
+        ),
+      );
+
+      // Should show the placeholder image
+      expect(find.byType(Image), findsOneWidget);
+    });
   });
 }

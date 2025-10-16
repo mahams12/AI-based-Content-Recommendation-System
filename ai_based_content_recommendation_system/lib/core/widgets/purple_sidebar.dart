@@ -67,7 +67,16 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
       case 0: // Home
         widget.onTap(0);
         break;
-      case 1: // Mood-Based Recommendations
+      case 1: // YouTube Videos
+        widget.onTap(1);
+        break;
+      case 2: // Music
+        widget.onTap(2);
+        break;
+      case 3: // Movies
+        widget.onTap(3);
+        break;
+      case 4: // Mood-Based Recommendations
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -75,7 +84,7 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
           ),
         );
         break;
-      case 2: // History
+      case 5: // History
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -83,7 +92,7 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
           ),
         );
         break;
-      case 3: // Favorites
+      case 6: // Favorites
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -91,15 +100,8 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
           ),
         );
         break;
-      case 4: // My Playlists
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Navigate to My Playlists'),
-            backgroundColor: Color(0xFF667eea),
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-          ),
-        );
+      case 7: // Profile
+        widget.onTap(4);
         break;
     }
   }
@@ -212,10 +214,13 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     children: [
                       _buildNavItem(Icons.home_rounded, 'Home', 0),
-                      _buildNavItem(Icons.mood_rounded, 'Mood-Based Recommendations', 1),
-                      _buildNavItem(Icons.history_rounded, 'History', 2),
-                      _buildNavItem(Icons.favorite_rounded, 'Favorites', 3),
-                      _buildNavItem(Icons.playlist_play_rounded, 'My Playlists', 4),
+                      _buildNavItem(Icons.play_circle_filled, 'YouTube Videos', 1),
+                      _buildNavItem(Icons.music_note_rounded, 'Music', 2),
+                      _buildNavItem(Icons.movie_creation_rounded, 'Movies', 3),
+                      _buildNavItem(Icons.mood_rounded, 'Mood-Based Recommendations', 4),
+                      _buildNavItem(Icons.history_rounded, 'History', 5),
+                      _buildNavItem(Icons.favorite_rounded, 'Favorites', 6),
+                      _buildNavItem(Icons.person_rounded, 'Profile', 7),
                     ],
                   ),
                 ),

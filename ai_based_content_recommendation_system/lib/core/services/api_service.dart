@@ -20,6 +20,13 @@ class ApiService {
     int maxResults = 20,
     String? categoryId,
   }) async {
+    // If YouTube API failed recently (within 5 minutes), use mock data immediately
+    if (_youtubeApiFailed && 
+        _lastYoutubeFailure != null && 
+        DateTime.now().difference(_lastYoutubeFailure!).inMinutes < 5) {
+      return ApiResponse.success(_getMockYouTubeContent(maxResults));
+    }
+
     try {
       final uri = Uri.parse('${AppConstants.youtubeBaseUrl}/search').replace(
         queryParameters: {
@@ -35,24 +42,59 @@ class ApiService {
       final response = await http.get(uri);
       
       if (response.statusCode == 200) {
+        // Reset failure flag on success
+        _youtubeApiFailed = false;
+        _lastYoutubeFailure = null;
+        
         final data = json.decode(response.body);
         final items = (data['items'] as List)
             .map((item) => ContentItem.fromYouTubeJson(item))
             .toList();
         
         return ApiResponse.success(items);
+      } else if (response.statusCode == 403 || response.statusCode == 429) {
+        // Mark API as failed and use mock data
+        _youtubeApiFailed = true;
+        _lastYoutubeFailure = DateTime.now();
+        print('YouTube API quota exceeded or forbidden. Using mock data.');
+        return ApiResponse.success(_getMockYouTubeContent(maxResults));
       } else {
         return ApiResponse.error('Failed to fetch YouTube content: ${response.statusCode}');
       }
     } catch (e) {
-      return ApiResponse.error('Error fetching YouTube content: $e');
+      // Mark API as failed and use mock data
+      _youtubeApiFailed = true;
+      _lastYoutubeFailure = DateTime.now();
+      print('YouTube API error: $e. Using mock data.');
+      return ApiResponse.success(_getMockYouTubeContent(maxResults));
     }
   }
+
+  // Track API call failures to prevent infinite loops
+  static bool _youtubeApiFailed = false;
+  static DateTime? _lastYoutubeFailure;
+
+  // Method to reset API failure state (useful for manual retry)
+  static void resetYouTubeApiFailure() {
+    _youtubeApiFailed = false;
+    _lastYoutubeFailure = null;
+    print('YouTube API failure state reset. Will retry API calls.');
+  }
+
+  // Method to check if YouTube API is currently failing
+  static bool get isYouTubeApiFailing => _youtubeApiFailed;
 
   Future<ApiResponse<List<ContentItem>>> getYouTubeTrending({
     String regionCode = 'US',
     int maxResults = 20,
   }) async {
+    // If YouTube API failed recently (within 5 minutes), use mock data immediately
+    if (_youtubeApiFailed && 
+        _lastYoutubeFailure != null && 
+        DateTime.now().difference(_lastYoutubeFailure!).inMinutes < 5) {
+      return ApiResponse.success(_getMockYouTubeContent(maxResults));
+    }
+
     try {
       final uri = Uri.parse('${AppConstants.youtubeBaseUrl}/videos').replace(
         queryParameters: {
@@ -67,18 +109,31 @@ class ApiService {
       final response = await http.get(uri);
       
       if (response.statusCode == 200) {
+        // Reset failure flag on success
+        _youtubeApiFailed = false;
+        _lastYoutubeFailure = null;
+        
         final data = json.decode(response.body);
         final items = (data['items'] as List)
             .map((item) => ContentItem.fromYouTubeTrendingJson(item))
             .toList();
         
         return ApiResponse.success(items);
+      } else if (response.statusCode == 403 || response.statusCode == 429) {
+        // Mark API as failed and use mock data
+        _youtubeApiFailed = true;
+        _lastYoutubeFailure = DateTime.now();
+        print('YouTube API quota exceeded or forbidden. Using mock data.');
+        return ApiResponse.success(_getMockYouTubeContent(maxResults));
       } else {
-        // Return mock data if API fails to ensure app functionality
+        // For other errors, return mock data
         return ApiResponse.success(_getMockYouTubeContent(maxResults));
       }
     } catch (e) {
-      // Return mock data if API fails to ensure app functionality
+      // Mark API as failed and use mock data
+      _youtubeApiFailed = true;
+      _lastYoutubeFailure = DateTime.now();
+      print('YouTube API error: $e. Using mock data.');
       return ApiResponse.success(_getMockYouTubeContent(maxResults));
     }
   }
@@ -87,6 +142,13 @@ class ApiService {
   Future<ApiResponse<List<ContentItem>>> getUnlimitedYouTubeContent({
     int maxResults = 100,
   }) async {
+    // If YouTube API failed recently, return mock data immediately
+    if (_youtubeApiFailed && 
+        _lastYoutubeFailure != null && 
+        DateTime.now().difference(_lastYoutubeFailure!).inMinutes < 5) {
+      return ApiResponse.success(_getMockYouTubeContent(maxResults));
+    }
+
     try {
       final results = <ContentItem>[];
       
@@ -97,26 +159,32 @@ class ApiService {
         'shorts', 'trending', 'popular', 'viral', 'latest', 'new', 'best'
       ];
       
-      // Get content from multiple queries
-      for (final query in queries) {
+      // Get content from multiple queries (limit to prevent quota issues)
+      int queryLimit = 3; // Only try first 3 queries to avoid quota issues
+      for (int i = 0; i < queryLimit && i < queries.length; i++) {
         if (results.length >= maxResults) break;
         
         final youtubeResult = await searchYouTubeContent(
-          query: query,
-          maxResults: 20, // Get more videos per query
+          query: queries[i],
+          maxResults: 10, // Reduced to prevent quota issues
         );
         
         if (youtubeResult.isSuccess && youtubeResult.data != null) {
           results.addAll(youtubeResult.data!);
         }
+        
+        // If API failed during this call, break the loop
+        if (_youtubeApiFailed) break;
       }
       
-      // Also get trending content
+      // Only get trending content if API hasn't failed
+      if (!_youtubeApiFailed) {
       final trendingResult = await getYouTubeTrending(
-        maxResults: 30,
+          maxResults: 20,
       );
       if (trendingResult.isSuccess && trendingResult.data != null) {
         results.addAll(trendingResult.data!);
+        }
       }
       
       // Remove duplicates based on ID
@@ -127,9 +195,16 @@ class ApiService {
       
       final finalResults = uniqueResults.values.take(maxResults).toList();
       
+      // If we don't have enough results, fill with mock data
+      if (finalResults.length < maxResults) {
+        final mockResults = _getMockYouTubeContent(maxResults - finalResults.length);
+        finalResults.addAll(mockResults);
+      }
+      
       return ApiResponse.success(finalResults);
     } catch (e) {
-      return ApiResponse.error('Failed to load unlimited YouTube content: $e');
+      // Return mock data if everything fails
+      return ApiResponse.success(_getMockYouTubeContent(maxResults));
     }
   }
 
@@ -586,7 +661,7 @@ class ApiService {
           'channelTitle': 'GamerPro',
           'publishedAt': '2024-01-15T10:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['gaming', 'setup', 'pc', 'rgb']
         },
@@ -601,7 +676,7 @@ class ApiService {
           'channelTitle': 'FortniteKing',
           'publishedAt': '2024-01-14T15:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9bZkp7q19f0/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['fortnite', 'gaming', 'victory', 'battle royale']
         },
@@ -618,7 +693,7 @@ class ApiService {
           'channelTitle': 'LifeWithSarah',
           'publishedAt': '2024-01-13T09:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2V1-U2sr-QQ/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['vlog', 'lifestyle', 'morning routine', 'daily life']
         },
@@ -633,7 +708,7 @@ class ApiService {
           'channelTitle': 'WanderlustTravel',
           'publishedAt': '2024-01-12T14:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3JZ_D3ELwOQ/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['travel', 'tokyo', 'vlog', 'japan', 'food']
         },
@@ -650,7 +725,7 @@ class ApiService {
           'channelTitle': 'Flutter Dev',
           'publishedAt': '2024-01-11T11:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Zt-WFFHTXY/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['flutter', 'tutorial', 'programming', 'mobile app']
         },
@@ -665,7 +740,7 @@ class ApiService {
           'channelTitle': 'Digital Art Pro',
           'publishedAt': '2024-01-10T16:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Au-BFFJTTY/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['photoshop', 'tutorial', 'digital art', 'painting']
         },
@@ -682,7 +757,7 @@ class ApiService {
           'channelTitle': 'Pet Comedy',
           'publishedAt': '2024-01-09T12:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Bv-CGGKUUZ/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['funny', 'pets', 'comedy', 'animals', 'compilation']
         },
@@ -699,7 +774,7 @@ class ApiService {
           'channelTitle': 'Acoustic Vibes',
           'publishedAt': '2024-01-08T20:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Cw-DHHKVVa/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['music', 'acoustic', 'cover', 'songs', 'guitar']
         },
@@ -716,7 +791,7 @@ class ApiService {
           'channelTitle': 'Tech Review',
           'publishedAt': '2024-01-07T14:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Dx-EEKWWb/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['tech', 'review', 'iphone', 'apple', 'smartphone']
         },
@@ -733,7 +808,7 @@ class ApiService {
           'channelTitle': 'Quick Cook',
           'publishedAt': '2024-01-06T09:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Eyy-FLLXcc/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['cooking', 'hack', 'short', 'quick', 'kitchen']
         },
@@ -748,7 +823,7 @@ class ApiService {
           'channelTitle': 'Dance Vibes',
           'publishedAt': '2024-01-05T18:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Faa-BMMYdd/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['dance', 'trend', 'viral', 'short', 'challenge']
         },
@@ -765,7 +840,7 @@ class ApiService {
           'channelTitle': 'FitLife',
           'publishedAt': '2024-01-04T07:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Gbb-CNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['fitness', 'workout', 'morning', 'health', 'exercise']
         },
@@ -782,7 +857,7 @@ class ApiService {
           'channelTitle': 'MinecraftMaster',
           'publishedAt': '2024-01-03T14:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Hh-CNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['minecraft', 'gaming', 'building', 'survival', 'castle']
         },
@@ -797,7 +872,7 @@ class ApiService {
           'channelTitle': 'COD Pro',
           'publishedAt': '2024-01-02T19:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Ii-DNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['call of duty', 'warzone', 'gaming', 'fps', 'battle royale']
         },
@@ -814,7 +889,7 @@ class ApiService {
           'channelTitle': 'Travel Diaries',
           'publishedAt': '2024-01-01T12:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Jj-ENNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['paris', 'travel', 'vlog', 'france', 'culture', 'food']
         },
@@ -829,7 +904,7 @@ class ApiService {
           'channelTitle': 'Creator Life',
           'publishedAt': '2023-12-31T10:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Kk-FNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['youtuber', 'lifestyle', 'vlog', 'daily routine', 'content creation']
         },
@@ -846,7 +921,7 @@ class ApiService {
           'channelTitle': 'Code Master',
           'publishedAt': '2023-12-30T16:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Ll-GNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['javascript', 'tutorial', 'programming', 'arrays', 'beginner']
         },
@@ -861,7 +936,7 @@ class ApiService {
           'channelTitle': 'Chef Italian',
           'publishedAt': '2023-12-29T18:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Mm-HNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['cooking', 'tutorial', 'pasta', 'italian', 'recipe', 'food']
         },
@@ -878,7 +953,7 @@ class ApiService {
           'channelTitle': 'Funny Moments',
           'publishedAt': '2023-12-28T20:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Nn-INNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['funny', 'fails', 'comedy', 'entertainment', 'compilation']
         },
@@ -893,7 +968,7 @@ class ApiService {
           'channelTitle': 'Laugh Factory',
           'publishedAt': '2023-12-27T15:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Oo-JNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['challenge', 'funny', 'laugh', 'entertainment', 'comedy']
         },
@@ -910,7 +985,7 @@ class ApiService {
           'channelTitle': 'Piano Covers',
           'publishedAt': '2023-12-26T21:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Pp-KNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['piano', 'music', 'cover', 'instrumental', 'songs']
         },
@@ -925,7 +1000,7 @@ class ApiService {
           'channelTitle': 'Guitar Master',
           'publishedAt': '2023-12-25T14:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Qq-LNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['guitar', 'tutorial', 'music', 'lesson', 'beginner', 'songs']
         },
@@ -942,7 +1017,7 @@ class ApiService {
           'channelTitle': 'Tech Reviewer',
           'publishedAt': '2023-12-24T11:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Rr-MNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['macbook', 'tech', 'review', 'apple', 'laptop', 'm3']
         },
@@ -957,7 +1032,7 @@ class ApiService {
           'channelTitle': 'Phone Expert',
           'publishedAt': '2023-12-23T16:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Ss-NNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['smartphone', 'tech', 'review', 'comparison', '2024', 'phones']
         },
@@ -974,7 +1049,7 @@ class ApiService {
           'channelTitle': 'HIIT Master',
           'publishedAt': '2023-12-22T08:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Tt-ONNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['hiit', 'workout', 'fitness', 'home workout', 'cardio', 'no equipment']
         },
@@ -989,7 +1064,7 @@ class ApiService {
           'channelTitle': 'Yoga Flow',
           'publishedAt': '2023-12-21T19:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Uu-PNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['yoga', 'fitness', 'beginner', 'flexibility', 'meditation', 'wellness']
         },
@@ -1006,7 +1081,7 @@ class ApiService {
           'channelTitle': 'Coffee Tips',
           'publishedAt': '2023-12-20T07:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Vv-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['coffee', 'hack', 'tip', 'short', 'quick', 'life hack']
         },
@@ -1021,7 +1096,7 @@ class ApiService {
           'channelTitle': 'Magic Shorts',
           'publishedAt': '2023-12-19T13:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Ww-RNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['magic', 'trick', 'short', 'quick', 'illusion', 'tutorial']
         },
@@ -1036,7 +1111,7 @@ class ApiService {
           'channelTitle': 'QuickFit',
           'publishedAt': '2023-12-16T08:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Xx-TNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['workout', 'fitness', 'short', 'quick', 'plank', 'core']
         },
@@ -1051,7 +1126,7 @@ class ApiService {
           'channelTitle': 'Quick Recipes',
           'publishedAt': '2023-12-15T12:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Yy-UNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['cooking', 'recipe', 'eggs', 'short', 'quick', 'breakfast']
         },
@@ -1066,7 +1141,7 @@ class ApiService {
           'channelTitle': 'Cat Comedy',
           'publishedAt': '2023-12-14T16:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Zz-VNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['cats', 'funny', 'fails', 'short', 'comedy', 'animals']
         },
@@ -1081,7 +1156,7 @@ class ApiService {
           'channelTitle': 'Tech Shorts',
           'publishedAt': '2023-12-13T14:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Aa-WNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['iphone', 'tech', 'hack', 'short', 'tips', 'features']
         },
@@ -1096,7 +1171,7 @@ class ApiService {
           'channelTitle': 'Dance Shorts',
           'publishedAt': '2023-12-12T19:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Bb-XNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['dance', 'tutorial', 'short', 'viral', 'challenge', 'music']
         },
@@ -1111,7 +1186,7 @@ class ApiService {
           'channelTitle': 'Gaming Shorts',
           'publishedAt': '2023-12-11T21:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Cc-YNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['gaming', 'headshot', 'fps', 'short', 'compilation', 'epic']
         },
@@ -1128,7 +1203,7 @@ class ApiService {
           'channelTitle': 'Space Facts',
           'publishedAt': '2023-12-18T17:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Xx-SNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['space', 'facts', 'science', 'education', 'universe', 'astronomy']
         },
@@ -1143,7 +1218,7 @@ class ApiService {
           'channelTitle': 'Nature Docs',
           'publishedAt': '2023-12-17T20:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Yy-TNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['documentary', 'ocean', 'nature', 'wildlife', 'marine life', 'education']
         },
@@ -1160,7 +1235,7 @@ class ApiService {
           'channelTitle': 'Art Studio',
           'publishedAt': '2023-12-10T15:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Dd-ZNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['art', 'watercolor', 'painting', 'tutorial', 'creative', 'beginner']
         },
@@ -1175,7 +1250,7 @@ class ApiService {
           'channelTitle': 'Tech News',
           'publishedAt': '2023-12-09T11:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Ee-ANNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['news', 'tech', 'industry', 'updates', 'current events']
         },
@@ -1190,7 +1265,7 @@ class ApiService {
           'channelTitle': 'Sports Central',
           'publishedAt': '2023-12-08T18:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Ff-BNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['football', 'sports', 'highlights', 'goals', 'soccer']
         },
@@ -1205,7 +1280,7 @@ class ApiService {
           'channelTitle': 'Comedy Club',
           'publishedAt': '2023-12-07T20:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Gg-CNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['comedy', 'stand-up', 'funny', 'entertainment', 'humor']
         },
@@ -1222,7 +1297,7 @@ class ApiService {
           'channelTitle': 'Math Shorts',
           'publishedAt': '2023-12-06T09:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Hh-DNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['math', 'trick', 'education', 'short', 'quick', 'numbers']
         },
@@ -1237,7 +1312,7 @@ class ApiService {
           'channelTitle': 'Anime Hub',
           'publishedAt': '2023-12-05T16:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Ii-ENNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['anime', 'review', 'recommendations', 'animation', 'japanese']
         },
@@ -1252,7 +1327,7 @@ class ApiService {
           'channelTitle': 'Gear Reviews',
           'publishedAt': '2023-12-04T14:10:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Jj-FNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['unboxing', 'review', 'gaming', 'mouse', 'tech', 'hardware']
         },
@@ -1267,7 +1342,7 @@ class ApiService {
           'channelTitle': 'Pet Care Pro',
           'publishedAt': '2023-12-03T12:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Kk-GNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['dogs', 'training', 'pets', 'animals', 'care', 'tips']
         },
@@ -1282,7 +1357,7 @@ class ApiService {
           'channelTitle': 'Dance Trends',
           'publishedAt': '2023-12-02T19:25:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Ll-HNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['dance', 'viral', 'challenge', 'trend', 'music', 'tutorial']
         },
@@ -1297,7 +1372,7 @@ class ApiService {
           'channelTitle': 'Quick Meals',
           'publishedAt': '2023-12-01T17:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Mm-INNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['cooking', 'recipe', 'pasta', 'quick', 'easy', 'food']
         },
@@ -1314,7 +1389,7 @@ class ApiService {
           'channelTitle': 'Gaming Clips',
           'publishedAt': '2023-11-30T22:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Nn-JNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['gaming', 'comeback', 'victory', 'short', 'epic', 'clutch']
         },
@@ -1329,7 +1404,7 @@ class ApiService {
           'channelTitle': 'Cooking Hacks',
           'publishedAt': '2023-11-29T14:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Oo-KNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['cooking', 'rice', 'hack', 'technique', 'food', 'tips']
         },
@@ -1344,7 +1419,7 @@ class ApiService {
           'channelTitle': 'Adventure Life',
           'publishedAt': '2023-11-28T10:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Pp-LNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['vlog', 'adventure', 'mountains', 'nature', 'hiking', 'travel']
         },
@@ -1359,7 +1434,7 @@ class ApiService {
           'channelTitle': 'Laptop Expert',
           'publishedAt': '2023-11-27T16:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Qq-MNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['laptop', 'tech', 'review', '2024', 'computers', 'hardware']
         },
@@ -1374,7 +1449,7 @@ class ApiService {
           'channelTitle': 'Magic Shorts',
           'publishedAt': '2023-11-26T13:10:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Rr-NNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['magic', 'trick', 'short', 'amazing', 'illusion', 'quick']
         },
@@ -1389,7 +1464,7 @@ class ApiService {
           'channelTitle': 'Acoustic Covers',
           'publishedAt': '2023-11-25T19:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Ss-ONNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['music', 'acoustic', 'guitar', 'cover', 'song', 'instrumental']
         },
@@ -1404,7 +1479,7 @@ class ApiService {
           'channelTitle': 'Morning Fitness',
           'publishedAt': '2023-11-24T07:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Tt-PNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['fitness', 'morning', 'workout', 'routine', 'health', 'exercise']
         },
@@ -1419,7 +1494,7 @@ class ApiService {
           'channelTitle': 'Life Hacks',
           'publishedAt': '2023-11-23T11:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Uu-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['life hack', 'organization', 'workspace', 'short', 'tips', 'productivity']
         },
@@ -1434,7 +1509,7 @@ class ApiService {
           'channelTitle': 'Code Academy',
           'publishedAt': '2023-11-22T15:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Vv-RNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['python', 'programming', 'tutorial', 'coding', 'beginner', 'education']
         },
@@ -1449,7 +1524,7 @@ class ApiService {
           'channelTitle': 'Animal Comedy',
           'publishedAt': '2023-11-21T18:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Ww-SNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['animals', 'funny', 'comedy', 'entertainment', 'compilation', 'cute']
         },
@@ -1464,7 +1539,7 @@ class ApiService {
           'channelTitle': 'Art Shorts',
           'publishedAt': '2023-11-20T12:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Xx-TNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['art', 'drawing', 'tutorial', 'short', 'quick', 'flower']
         },
@@ -1479,7 +1554,7 @@ class ApiService {
           'channelTitle': 'Minecraft Builder',
           'publishedAt': '2023-11-19T20:10:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Yy-UNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['minecraft', 'building', 'tutorial', 'gaming', 'construction', 'blocks']
         },
@@ -1494,7 +1569,7 @@ class ApiService {
           'channelTitle': 'Science Facts',
           'publishedAt': '2023-11-18T14:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Zz-VNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['science', 'facts', 'amazing', 'short', 'education', 'mind-blowing']
         },
@@ -1509,7 +1584,7 @@ class ApiService {
           'channelTitle': 'Student Life',
           'publishedAt': '2023-11-17T09:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Aa-WNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['vlog', 'student', 'university', 'daily life', 'routine', 'college']
         },
@@ -1524,7 +1599,7 @@ class ApiService {
           'channelTitle': 'Camera Reviews',
           'publishedAt': '2023-11-16T16:40:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Bb-XNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['smartphone', 'camera', 'comparison', 'tech', 'photography', 'review']
         },
@@ -1539,7 +1614,7 @@ class ApiService {
           'channelTitle': 'Dance Quick',
           'publishedAt': '2023-11-15T21:25:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Cc-YNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['dance', 'move', 'viral', 'short', 'quick', 'tutorial']
         },
@@ -1554,7 +1629,7 @@ class ApiService {
           'channelTitle': 'Meditation Music',
           'publishedAt': '2023-11-14T08:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Dd-ZNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['music', 'piano', 'meditation', 'relaxing', 'focus', 'calm']
         },
@@ -1569,7 +1644,7 @@ class ApiService {
           'channelTitle': 'Home Fitness',
           'publishedAt': '2023-11-13T17:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Ee-ANNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['fitness', 'home workout', 'bodyweight', 'no equipment', 'exercise', 'health']
         },
@@ -1584,7 +1659,7 @@ class ApiService {
           'channelTitle': 'Cooking Tips',
           'publishedAt': '2023-11-12T11:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Ff-BNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['cooking', 'eggs', 'tip', 'technique', 'short', 'breakfast']
         },
@@ -1601,7 +1676,7 @@ class ApiService {
           'channelTitle': 'Fortnite Pro',
           'publishedAt': '2023-11-11T19:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Gg-CNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['fortnite', 'gaming', 'victory', 'battle royale', 'epic', 'win']
         },
@@ -1616,7 +1691,7 @@ class ApiService {
           'channelTitle': 'Life Hacks Pro',
           'publishedAt': '2023-11-10T13:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Hh-DNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['life hack', 'trick', 'routine', 'short', 'tips', 'daily']
         },
@@ -1631,7 +1706,7 @@ class ApiService {
           'channelTitle': 'Digital Art Studio',
           'publishedAt': '2023-11-09T15:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Ii-ENNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['art', 'digital', 'painting', 'tutorial', 'creative', 'design']
         },
@@ -1646,7 +1721,7 @@ class ApiService {
           'channelTitle': 'Math Tricks',
           'publishedAt': '2023-11-08T10:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Jj-FNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['math', 'trick', 'multiplication', 'short', 'quick', 'numbers']
         },
@@ -1661,7 +1736,7 @@ class ApiService {
           'channelTitle': 'AI Review',
           'publishedAt': '2023-11-07T14:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Kk-GNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['ai', 'tools', 'productivity', 'tech', 'review', '2024']
         },
@@ -1676,7 +1751,7 @@ class ApiService {
           'channelTitle': 'Guitar Master',
           'publishedAt': '2023-11-06T20:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Ll-HNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['music', 'guitar', 'solo', 'performance', 'technique', 'instrumental']
         },
@@ -1691,7 +1766,7 @@ class ApiService {
           'channelTitle': 'Pet Comedy',
           'publishedAt': '2023-11-05T16:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Mm-INNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['pets', 'funny', 'comedy', 'short', 'animals', 'cute']
         },
@@ -1706,7 +1781,7 @@ class ApiService {
           'channelTitle': 'Cardio Fitness',
           'publishedAt': '2023-11-04T08:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Nn-JNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['fitness', 'cardio', 'home workout', 'high intensity', 'exercise', 'health']
         },
@@ -1721,7 +1796,7 @@ class ApiService {
           'channelTitle': 'Japan Travel',
           'publishedAt': '2023-11-03T12:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Oo-KNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-4Oo-KNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['travel', 'japan', 'vlog', 'culture', 'adventure', 'tourism']
         },
@@ -1736,7 +1811,7 @@ class ApiService {
           'channelTitle': 'Science Lab',
           'publishedAt': '2023-11-02T14:10:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Pp-LNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-5Pp-LNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['science', 'experiment', 'amazing', 'short', 'education', 'mind-blowing']
         },
@@ -1751,7 +1826,7 @@ class ApiService {
           'channelTitle': 'COD Highlights',
           'publishedAt': '2023-11-01T21:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Qq-MNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-6Qq-MNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['call of duty', 'gaming', 'highlights', 'fps', 'shooter', 'epic']
         },
@@ -1766,7 +1841,7 @@ class ApiService {
           'channelTitle': 'Recipe Hacks',
           'publishedAt': '2023-10-31T11:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Rr-NNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-7Rr-NNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['cooking', 'recipe', 'hack', 'short', 'quick', 'time-saving']
         },
@@ -1781,7 +1856,7 @@ class ApiService {
           'channelTitle': 'Phone Unbox',
           'publishedAt': '2023-10-30T17:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Ss-ONNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-8Ss-ONNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['smartphone', 'unboxing', 'tech', 'review', 'flagship', 'new']
         },
@@ -1796,7 +1871,7 @@ class ApiService {
           'channelTitle': 'Dance Viral',
           'publishedAt': '2023-10-29T19:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Tt-PNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-9Tt-PNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['dance', 'viral', 'move', 'short', 'quick', 'tutorial']
         },
@@ -1811,7 +1886,7 @@ class ApiService {
           'channelTitle': 'Piano Covers Pro',
           'publishedAt': '2023-10-28T15:10:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Uu-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-0Uu-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['music', 'piano', 'cover', 'popular', 'song', 'trending']
         },
@@ -1828,7 +1903,7 @@ class ApiService {
           'channelTitle': 'Minecraft Master',
           'publishedAt': '2023-10-27T14:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Vv-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1Vv-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['minecraft', 'gaming', 'builds', 'creative', 'showcase']
         },
@@ -1843,7 +1918,7 @@ class ApiService {
           'channelTitle': 'COD Highlights',
           'publishedAt': '2023-10-26T16:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Ww-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-2Ww-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['call of duty', 'warzone', 'gaming', 'highlights', 'fps']
         },
@@ -1858,7 +1933,7 @@ class ApiService {
           'channelTitle': 'Valorant Pro',
           'publishedAt': '2023-10-25T20:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Xx-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-3Xx-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['valorant', 'gaming', 'fps', 'competitive', 'tips']
         },
@@ -1873,7 +1948,7 @@ class ApiService {
           'channelTitle': 'GTA Adventures',
           'publishedAt': '2023-10-24T18:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Yy-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-4Yy-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['gta', 'gaming', 'online', 'adventures', 'funny']
         },
@@ -1888,7 +1963,7 @@ class ApiService {
           'channelTitle': 'Apex Updates',
           'publishedAt': '2023-10-23T12:10:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Zz-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-5Zz-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['apex legends', 'gaming', 'battle royale', 'update', 'season']
         },
@@ -1904,7 +1979,7 @@ class ApiService {
           'channelTitle': 'Weekend Vibes',
           'publishedAt': '2023-10-22T11:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Aa-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-6Aa-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['vlog', 'travel', 'weekend', 'mountains', 'relaxing']
         },
@@ -1919,7 +1994,7 @@ class ApiService {
           'channelTitle': 'Beauty Life',
           'publishedAt': '2023-10-21T09:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Bb-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-7Bb-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['skincare', 'beauty', 'routine', 'tips', 'healthy']
         },
@@ -1934,7 +2009,7 @@ class ApiService {
           'channelTitle': 'Student Life',
           'publishedAt': '2023-10-20T16:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Cc-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-8Cc-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['college', 'student', 'life', 'vlog', 'education']
         },
@@ -1949,7 +2024,7 @@ class ApiService {
           'channelTitle': 'Life Changes',
           'publishedAt': '2023-10-19T14:50:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Dd-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-9Dd-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['moving', 'life change', 'vlog', 'new city', 'adventure']
         },
@@ -1964,7 +2039,7 @@ class ApiService {
           'channelTitle': 'Pet Lovers',
           'publishedAt': '2023-10-18T13:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Ee-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-0Ee-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['pets', 'care', 'animals', 'routine', 'love']
         },
@@ -1980,7 +2055,7 @@ class ApiService {
           'channelTitle': 'Code Academy',
           'publishedAt': '2023-10-17T10:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Ff-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1Ff-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['python', 'programming', 'tutorial', 'coding', 'beginner']
         },
@@ -1995,7 +2070,7 @@ class ApiService {
           'channelTitle': 'Photo Pro',
           'publishedAt': '2023-10-16T15:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Gg-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-2Gg-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['photoshop', 'tutorial', 'photo editing', 'design', 'tips']
         },
@@ -2010,7 +2085,7 @@ class ApiService {
           'channelTitle': 'Guitar Master',
           'publishedAt': '2023-10-15T19:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Hh-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-3Hh-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['guitar', 'music', 'tutorial', 'acoustic', 'lessons']
         },
@@ -2025,7 +2100,7 @@ class ApiService {
           'channelTitle': 'Excel Expert',
           'publishedAt': '2023-10-14T12:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Ii-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-4Ii-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['excel', 'tutorial', 'functions', 'formulas', 'office']
         },
@@ -2040,7 +2115,7 @@ class ApiService {
           'channelTitle': 'Web Dev Pro',
           'publishedAt': '2023-10-13T17:10:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Jj-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-5Jj-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['web development', 'html', 'css', 'javascript', 'tutorial']
         },
@@ -2056,7 +2131,7 @@ class ApiService {
           'channelTitle': 'Cat Lovers',
           'publishedAt': '2023-10-12T14:25:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Kk-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-6Kk-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['cats', 'funny', 'compilation', 'entertainment', 'cute']
         },
@@ -2071,7 +2146,7 @@ class ApiService {
           'channelTitle': 'Prank Central',
           'publishedAt': '2023-10-11T16:40:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Ll-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-7Ll-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['pranks', 'funny', 'fails', 'entertainment', 'viral']
         },
@@ -2086,7 +2161,7 @@ class ApiService {
           'channelTitle': 'Dance Trends',
           'publishedAt': '2023-10-10T20:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Mm-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-8Mm-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['dance', 'challenge', 'trends', 'entertainment', 'viral']
         },
@@ -2101,7 +2176,7 @@ class ApiService {
           'channelTitle': 'Magic Pro',
           'publishedAt': '2023-10-09T13:50:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Nn-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-9Nn-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['magic', 'tricks', 'entertainment', 'amazing', 'revealed']
         },
@@ -2116,7 +2191,7 @@ class ApiService {
           'channelTitle': 'Comedy Central',
           'publishedAt': '2023-10-08T19:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Oo-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-0Oo-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['comedy', 'stand-up', 'funny', 'entertainment', 'laugh']
         },
@@ -2133,7 +2208,7 @@ class ApiService {
           'channelTitle': 'Tech Reviewer',
           'publishedAt': '2023-10-07T12:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Pp-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1Pp-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['iphone', 'tech', 'review', 'smartphone', 'apple']
         },
@@ -2148,7 +2223,7 @@ class ApiService {
           'channelTitle': 'Apple Insider',
           'publishedAt': '2023-10-06T15:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Qq-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-2Qq-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['macbook', 'apple', 'review', 'laptop', 'm3']
         },
@@ -2163,7 +2238,7 @@ class ApiService {
           'channelTitle': 'Android Central',
           'publishedAt': '2023-10-05T18:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Rr-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-3Rr-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['samsung', 'galaxy', 'unboxing', 'android', 'smartphone']
         },
@@ -2178,7 +2253,7 @@ class ApiService {
           'channelTitle': 'Gaming Tech',
           'publishedAt': '2023-10-04T14:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Ss-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-4Ss-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['nvidia', 'rtx 4090', 'gaming', 'graphics', 'pc']
         },
@@ -2193,7 +2268,7 @@ class ApiService {
           'channelTitle': 'Electric Vehicle',
           'publishedAt': '2023-10-03T16:10:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Tt-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-5Tt-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['tesla', 'model y', 'electric', 'car', 'review']
         },
@@ -2209,7 +2284,7 @@ class ApiService {
           'channelTitle': 'Italian Kitchen',
           'publishedAt': '2023-10-02T11:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Uu-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-6Uu-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['pasta', 'cooking', 'italian', 'recipe', 'homemade']
         },
@@ -2224,7 +2299,7 @@ class ApiService {
           'channelTitle': 'Sweet Treats',
           'publishedAt': '2023-10-01T13:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Vv-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-7Vv-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['chocolate', 'cake', 'baking', 'dessert', 'sweet']
         },
@@ -2239,7 +2314,7 @@ class ApiService {
           'channelTitle': 'BBQ Master',
           'publishedAt': '2023-09-30T17:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Ww-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-8Ww-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['bbq', 'ribs', 'grilling', 'meat', 'sauce']
         },
@@ -2254,7 +2329,7 @@ class ApiService {
           'channelTitle': 'Japanese Cuisine',
           'publishedAt': '2023-09-29T15:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Xx-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-9Xx-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['sushi', 'japanese', 'cooking', 'tutorial', 'seafood']
         },
@@ -2269,7 +2344,7 @@ class ApiService {
           'channelTitle': 'Healthy Living',
           'publishedAt': '2023-09-28T09:50:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Yy-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-0Yy-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['smoothie', 'healthy', 'nutrition', 'breakfast', 'fruits']
         },
@@ -2285,7 +2360,7 @@ class ApiService {
           'channelTitle': 'Fitness Pro',
           'publishedAt': '2023-09-27T07:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/1Zz-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-1Zz-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['workout', 'fitness', 'home', 'full body', 'exercise']
         },
@@ -2300,7 +2375,7 @@ class ApiService {
           'channelTitle': 'Yoga Life',
           'publishedAt': '2023-09-26T06:45:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/2Aa-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-2Aa-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['yoga', 'beginners', 'relaxation', 'flexibility', 'meditation']
         },
@@ -2315,7 +2390,7 @@ class ApiService {
           'channelTitle': 'Cardio King',
           'publishedAt': '2023-09-25T18:00:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/3Bb-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-3Bb-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['hiit', 'cardio', 'intense', 'fat burning', 'workout']
         },
@@ -2330,7 +2405,7 @@ class ApiService {
           'channelTitle': 'Women Fitness',
           'publishedAt': '2023-09-24T19:30:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/4Cc-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-4Cc-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['strength training', 'women', 'weights', 'muscle', 'fitness']
         },
@@ -2345,7 +2420,7 @@ class ApiService {
           'channelTitle': 'Pilates Pro',
           'publishedAt': '2023-09-23T17:15:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/5Dd-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-5Dd-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['pilates', 'core', 'strength', 'toning', 'balance']
         },
@@ -2361,7 +2436,7 @@ class ApiService {
           'channelTitle': 'Travel Explorer',
           'publishedAt': '2023-09-22T14:20:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/6Ee-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-6Ee-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['tokyo', 'japan', 'travel', 'guide', 'tourist']
         },
@@ -2376,7 +2451,7 @@ class ApiService {
           'channelTitle': 'European Travel',
           'publishedAt': '2023-09-21T12:10:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/7Ff-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-7Ff-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['paris', 'france', 'travel', 'city tour', 'sightseeing']
         },
@@ -2391,7 +2466,7 @@ class ApiService {
           'channelTitle': 'Tropical Paradise',
           'publishedAt': '2023-09-20T16:40:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/8Gg-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-8Gg-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['bali', 'beach', 'paradise', 'tropical', 'resort']
         },
@@ -2406,7 +2481,7 @@ class ApiService {
           'channelTitle': 'NYC Travel',
           'publishedAt': '2023-09-19T11:25:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/9Hh-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-9Hh-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['new york', 'nyc', 'travel', 'city', 'attractions']
         },
@@ -2421,7 +2496,7 @@ class ApiService {
           'channelTitle': 'Mountain Explorer',
           'publishedAt': '2023-09-18T15:50:00Z',
           'thumbnails': {
-            'high': {'url': 'https://i.ytimg.com/vi/0Ii-QNNZee/maxresdefault.jpg'}
+            'high': {'url': 'https://images.unsplash.com/photo-0Ii-QNNZee?w=480&h=360&fit=crop&crop=center'}
           },
           'tags': ['swiss alps', 'hiking', 'skiing', 'mountains', 'adventure']
         },

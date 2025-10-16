@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 
 import '../theme/app_theme.dart';
+import 'safe_network_image.dart';
+import '../models/content_model.dart';
 
 class TrendingCard extends StatefulWidget {
   final String title;
@@ -164,18 +166,14 @@ class _TrendingCardState extends State<TrendingCard>
                               ),
                             ),
                             child: widget.imageUrl != null
-                                ? ClipRRect(
+                                ? SafeNetworkImage(
+                                    imageUrl: widget.imageUrl!,
+                                    fit: BoxFit.cover,
                                     borderRadius: const BorderRadius.only(
                                       topLeft: Radius.circular(16),
                                       topRight: Radius.circular(16),
                                     ),
-                                    child: Image.network(
-                                      widget.imageUrl!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return _buildIconFallback(accentColor);
-                                      },
-                                    ),
+                                    platform: ContentType.spotify, // Default platform
                                   )
                                 : _buildIconFallback(accentColor),
                           ),

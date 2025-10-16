@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/content_model.dart';
 import 'favorite_button.dart';
+import 'safe_network_image.dart';
 
 class MediaPlayer extends StatefulWidget {
   final ContentItem content;
@@ -121,26 +122,13 @@ class _MediaPlayerState extends State<MediaPlayer> {
                 children: [
                   // Thumbnail or placeholder
                   if (widget.content.thumbnailUrl.isNotEmpty)
-                    ClipRRect(
+                    SafeNetworkImage(
+                      imageUrl: widget.content.thumbnailUrl,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
                       borderRadius: BorderRadius.circular(16),
-                      child: Image.network(
-                        widget.content.thumbnailUrl,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return _buildPlaceholder();
-                        },
-                      ),
+                      platform: widget.content.platform,
                     )
                   else
                     _buildPlaceholder(),
@@ -350,9 +338,6 @@ class _MediaPlayerState extends State<MediaPlayer> {
       case ContentType.tmdb:
         return 'View Details';
       case ContentType.spotify:
-        if (widget.content.audioUrl != null && widget.content.audioUrl!.isNotEmpty) {
-          return _isPlaying ? 'Pause Preview' : 'Play Preview';
-        }
         return 'Open in Spotify';
     }
   }
@@ -363,32 +348,7 @@ class _MediaPlayerState extends State<MediaPlayer> {
     });
 
     try {
-      // Handle Spotify tracks with audio preview
-      if (widget.content.platform == ContentType.spotify && 
-          widget.content.audioUrl != null && 
-          widget.content.audioUrl!.isNotEmpty) {
-        // Play the audio preview directly
-        setState(() {
-          _isPlaying = !_isPlaying;
-        });
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isPlaying 
-                ? 'Playing preview: ${widget.content.title}'
-                : 'Preview paused'),
-            backgroundColor: const Color(0xFF1DB954),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-        return;
-      }
-
-      // For other platforms or Spotify without preview, open external URL
+      // Always redirect to external platform - no direct playback
       String url;
       
       switch (widget.content.platform) {
@@ -397,16 +357,16 @@ class _MediaPlayerState extends State<MediaPlayer> {
                 'https://www.youtube.com/watch?v=${widget.content.id}';
           break;
         case ContentType.spotify:
-          // If no preview available, show message
-          if (widget.content.audioUrl == null || widget.content.audioUrl!.isEmpty) {
-            _showError('No preview available for this track. Please visit Spotify to listen.');
-            return;
+          // Always redirect to Spotify - no preview playback
+          if (widget.content.externalUrl != null && widget.content.externalUrl!.isNotEmpty) {
+            url = widget.content.externalUrl!;
+          } else {
+            // Fallback: redirect to Spotify search for the track
+            url = 'https://open.spotify.com/search/${Uri.encodeComponent(widget.content.title)}';
           }
-          url = widget.content.externalUrl ?? 
-                'https://open.spotify.com/track/${widget.content.id}';
           break;
         case ContentType.tmdb:
-          // For TMDB, we'll show details or open in browser
+          // For TMDB, show details or open in browser
           url = widget.content.externalUrl ?? 
                 'https://www.themoviedb.org/movie/${widget.content.id}';
           break;
@@ -418,9 +378,20 @@ class _MediaPlayerState extends State<MediaPlayer> {
           uri,
           mode: LaunchMode.externalApplication,
         );
-        setState(() {
-          _isPlaying = true;
-        });
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Opening ${widget.content.title} in ${widget.content.platform.name}'),
+            backgroundColor: widget.content.platform == ContentType.spotify 
+                ? const Color(0xFF1DB954) 
+                : const Color(0xFF667eea),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
       } else {
         _showError('Could not open ${widget.content.platform.name}');
       }

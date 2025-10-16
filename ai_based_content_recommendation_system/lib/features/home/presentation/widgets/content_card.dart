@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/content_model.dart';
+import '../../../../core/widgets/safe_network_image.dart';
 
 class ContentCard extends StatelessWidget {
   final ContentItem content;
@@ -40,24 +40,15 @@ class ContentCard extends StatelessWidget {
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(AppConstants.borderRadius),
                     ),
-                    child: CachedNetworkImage(
+                    child: SafeNetworkImage(
                       imageUrl: content.thumbnailUrl,
                       width: double.infinity,
                       height: double.infinity,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey[300],
-                        child: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(AppConstants.borderRadius),
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[300],
-                        child: const Icon(
-                          Icons.error_outline,
-                          color: Colors.grey,
-                        ),
-                      ),
+                      platform: content.platform,
                     ),
                   ),
                   

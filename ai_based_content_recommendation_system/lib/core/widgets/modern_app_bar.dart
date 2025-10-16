@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/app_theme.dart';
+import '../models/content_model.dart';
+import 'safe_network_image.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 
 class ModernAppBar extends ConsumerWidget implements PreferredSizeWidget {
@@ -85,14 +87,13 @@ class ModernAppBar extends ConsumerWidget implements PreferredSizeWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: user.photoURL != null
-                            ? ClipRRect(
+                            ? SafeNetworkImage(
+                                imageUrl: user.photoURL!,
+                                width: 24,
+                                height: 24,
+                                fit: BoxFit.cover,
                                 borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  user.photoURL!,
-                                  width: 24,
-                                  height: 24,
-                                  fit: BoxFit.cover,
-                                ),
+                                platform: ContentType.spotify, // Default platform for profile images
                               )
                             : const Icon(
                                 Icons.person,

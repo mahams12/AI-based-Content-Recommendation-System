@@ -14,6 +14,10 @@ import 'features/auth/presentation/pages/login_screen.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/home/presentation/pages/home_screen.dart';
 import 'features/profile/presentation/pages/profile_screen.dart';
+import 'features/welcome/presentation/pages/welcome_screen.dart';
+import 'features/youtube/presentation/pages/youtube_recommendations_screen.dart';
+import 'features/music/presentation/pages/music_recommendations_screen.dart';
+import 'features/movies/presentation/pages/movies_recommendations_screen.dart';
 import 'core/services/api_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/models/content_model.dart';
@@ -49,7 +53,7 @@ class MyApp extends ConsumerWidget {
       theme: AppTheme.darkTheme, // Force dark theme for glassmorphism
       home: authState.when(
         data: (user) => user != null 
-            ? const MainNavigationScreen() 
+            ? const WelcomeScreen() 
             : const LoginScreen(),
         loading: () => const SplashScreen(),
         error: (error, stack) => const LoginScreen(),
@@ -80,11 +84,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   
   final List<Widget> _screens = [
     const HomeScreen(),
+    const YouTubeRecommendationsScreen(),
+    const MusicRecommendationsScreen(),
+    const MoviesRecommendationsScreen(),
     const ProfileScreen(),
   ];
 
   final List<String> _screenTitles = [
     'Home',
+    'YouTube',
+    'Music',
+    'Movies',
     'Profile',
   ];
 
@@ -175,7 +185,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: Text(
-                          _screenTitles[_currentIndex],
+                          _screenTitles[_currentIndex.clamp(0, _screenTitles.length - 1)],
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
@@ -202,7 +212,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 // Main Content
                 Expanded(
                   child: IndexedStack(
-                    index: _currentIndex,
+                    index: _currentIndex.clamp(0, _screens.length - 1),
                     children: _screens,
                   ),
                 ),
@@ -222,7 +232,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           // Purple Sidebar
           PurpleSidebar(
             currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
+            onTap: (index) => setState(() => _currentIndex = index.clamp(0, _screens.length - 1)),
             isOpen: _isSidebarOpen,
             onClose: _toggleSidebar,
           ),

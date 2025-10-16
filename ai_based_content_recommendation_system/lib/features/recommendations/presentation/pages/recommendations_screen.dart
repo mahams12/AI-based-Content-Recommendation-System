@@ -4,6 +4,7 @@ import '../../../../core/models/content_model.dart';
 import '../../../home/presentation/providers/content_provider.dart';
 import '../../../home/presentation/providers/playlist_provider.dart';
 import '../../../../core/widgets/glassmorphism_card.dart';
+import '../../../../core/widgets/safe_network_image.dart';
 import '../../../../core/services/recommendation_engine.dart';
 
 class RecommendationsScreen extends ConsumerStatefulWidget {
@@ -325,21 +326,13 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen>
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      content.thumbnailUrl,
+                    child: SafeNetworkImage(
+                      imageUrl: content.thumbnailUrl,
                       height: 100,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 100,
-                          color: Colors.grey[800],
-                          child: const Icon(
-                            Icons.image_not_supported,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
+                      borderRadius: BorderRadius.circular(8),
+                      platform: content.platform,
                     ),
                   ),
                   const SizedBox(height: 8),

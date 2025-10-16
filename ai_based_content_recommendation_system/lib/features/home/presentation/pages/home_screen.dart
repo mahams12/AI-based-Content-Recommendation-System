@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/models/content_model.dart';
 import '../../../../core/widgets/media_player.dart';
+import '../../../../core/widgets/safe_network_image.dart';
 import '../widgets/trending_content_scroller.dart';
 
 
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<ContentItem> _trendingContent = [];
   List<ContentItem> _categoryContent = [];
   bool _isLoadingCategory = false;
+  bool _showApiWarning = false;
   
 
   @override
@@ -74,6 +76,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
 
 
+  // Check API status and show warning if needed
+  void _checkApiStatus() {
+    setState(() {
+      _showApiWarning = ApiService.isYouTubeApiFailing;
+    });
+  }
+
   // Load trending content for the trending section (top 3 cards)
   Future<void> _loadTrendingContent() async {
     if (!mounted) return;
@@ -85,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (result.isSuccess && result.data != null) {
         setState(() {
           _trendingContent = result.data!;
+          _showApiWarning = ApiService.isYouTubeApiFailing;
         });
       }
     } catch (e) {
@@ -133,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       setState(() {
         _categoryContent = content;
         _isLoadingCategory = false;
+        _showApiWarning = ApiService.isYouTubeApiFailing;
       });
     } catch (e) {
       if (!mounted) return;
@@ -231,6 +242,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 physics: const BouncingScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(child: _buildAppBar()),
+                  if (_showApiWarning) SliverToBoxAdapter(child: _buildApiWarningBanner()),
                   SliverToBoxAdapter(
                     child: SlideTransition(
                       position: _slideAnimation,
@@ -488,29 +500,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             if (item.thumbnailUrl.isNotEmpty)
                                               ClipRRect(
                                                 borderRadius: BorderRadius.circular(12),
-                                                child: Image.network(
-                                                  item.thumbnailUrl,
+                                                child: SafeNetworkImage(
+                                                  imageUrl: item.thumbnailUrl,
                                                   fit: BoxFit.cover,
                                                   width: double.infinity,
                                                   height: double.infinity,
-                                                  loadingBuilder: (context, child, loadingProgress) {
-                                                    if (loadingProgress == null) return child;
-                                                    return Center(
-                                                      child: CircularProgressIndicator(
-                                                        color: Colors.white,
-                                                        strokeWidth: 2,
-                                                      ),
-                                                    );
-                                                  },
-                                                  errorBuilder: (context, error, stackTrace) {
-                                                    return Center(
-                                                      child: Icon(
-                                                        icon,
-                                                        size: 24,
-                                                        color: Colors.white,
-                                                      ),
-                                                    );
-                                                  },
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  platform: item.platform,
                                                 ),
                                               )
                                             else
@@ -898,29 +894,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         topLeft: Radius.circular(20),
                         topRight: Radius.circular(20),
                       ),
-                      child: Image.network(
-                        item.thumbnailUrl,
+                      child: SafeNetworkImage(
+                        imageUrl: item.thumbnailUrl,
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              color: colors[0],
-                              strokeWidth: 2,
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Center(
-                            child: Icon(
-                              _getPlatformIcon(item.platform),
-                              size: 48,
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                          );
-                        },
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                        platform: item.platform,
                       ),
                     ),
                   
@@ -1212,5 +1195,59 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     
     // Fallback to category
     return item.category.toString().split('.').last.replaceAll(RegExp(r'([A-Z])'), ' \$1').trim();
+  }
+
+  // Build API warning banner
+  Widget _buildApiWarningBanner() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning_rounded,
+            color: Colors.orange,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'YouTube API quota exceeded. Showing demo content.',
+              style: TextStyle(
+                color: Colors.orange,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              ApiService.resetYouTubeApiFailure();
+              _checkApiStatus();
+              _loadTrendingContent();
+              _loadCategoryContent();
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              'Retry',
+              style: TextStyle(
+                color: Colors.orange,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -4,7 +4,7 @@ class AppConstants {
   static const String appVersion = '1.0.0';
   
   // API Keys
-  static const String youtubeApiKey = 'AIzaSyBO0T2TJ5nWb3zKgwrQ3J3dIxK1QC_2t0A';
+  static const String youtubeApiKey = 'AIzaSyDdwTVftDl6nRqRuofWlfx1p8-enTPNFnc';
   static const String spotifyClientId = '071b9c2312f64b2495e7135f3dfbf317';
   static const String tmdbApiKey = '146bd026e1a4e8b5998458984ac771ce';
   

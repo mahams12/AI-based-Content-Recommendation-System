@@ -4,30 +4,30 @@ class SpotifyContent {
     final mockTracks = [
       // English Pop Hits
       {
-        'id': 'spotify_track_1',
+        'id': '4iV5W9uYEdYUVa79Axb7Rh',
         'name': 'Blinding Lights',
         'artists': [{'name': 'The Weeknd'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/1e6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
-        'external_urls': {'spotify': 'https://open.spotify.com/track/1'},
+        'external_urls': {'spotify': 'https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh'},
         'duration_ms': 200000,
         'popularity': 95,
       },
       {
-        'id': 'spotify_track_2',
+        'id': '6UelLqGlWMcVH1E5c4H7lY',
         'name': 'Watermelon Sugar',
         'artists': [{'name': 'Harry Styles'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273e2e352d89826aef6dbd5ff8f'}
+            {'url': 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/2e6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
-        'external_urls': {'spotify': 'https://open.spotify.com/track/2'},
+        'external_urls': {'spotify': 'https://open.spotify.com/track/6UelLqGlWMcVH1E5c4H7lY'},
         'duration_ms': 174000,
         'popularity': 89,
       },
@@ -37,11 +37,11 @@ class SpotifyContent {
         'artists': [{'name': 'Dua Lipa'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273f3e4f5a6b7c8d9e0f1a2b3c4d5'}
+            {'url': 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/3f6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
-        'external_urls': {'spotify': 'https://open.spotify.com/track/3'},
+        'external_urls': {'spotify': 'https://open.spotify.com/track/2O2fawsU9Uep5BxmD7x5On'},
         'duration_ms': 203000,
         'popularity': 88,
       },
@@ -51,7 +51,7 @@ class SpotifyContent {
         'artists': [{'name': 'Olivia Rodrigo'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273g4h5i6j7k8l9m0n1o2p3q4r5'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/4f6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -65,7 +65,7 @@ class SpotifyContent {
         'artists': [{'name': 'The Kid LAROI'}, {'name': 'Justin Bieber'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273h5i6j7k8l9m0n1o2p3q4r5s6'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/5f6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -79,7 +79,7 @@ class SpotifyContent {
         'artists': [{'name': 'Lil Nas X'}, {'name': 'Jack Harlow'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273i6j7k8l9m0n1o2p3q4r5s6t7'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/6f6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -93,7 +93,7 @@ class SpotifyContent {
         'artists': [{'name': 'Glass Animals'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273j7k8l9m0n1o2p3q4r5s6t7u8'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/7f6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -107,7 +107,7 @@ class SpotifyContent {
         'artists': [{'name': 'Justin Bieber'}, {'name': 'Daniel Caesar'}, {'name': 'Giveon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273k8l9m0n1o2p3q4r5s6t7u8v9'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/8f6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -121,7 +121,7 @@ class SpotifyContent {
         'artists': [{'name': 'Doja Cat'}, {'name': 'SZA'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273l9m0n1o2p3q4r5s6t7u8v9w0'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/9f6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -135,7 +135,7 @@ class SpotifyContent {
         'artists': [{'name': 'Lil Nas X'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273m0n1o2p3q4r5s6t7u8v9w0x1'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/af6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -150,7 +150,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}, {'name': 'Amitabh Bhattacharya'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273n1o2p3q4r5s6t7u8v9w0x1y2'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/bf6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -164,7 +164,7 @@ class SpotifyContent {
         'artists': [{'name': 'Jubin Nautiyal'}, {'name': 'Asees Kaur'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273o2p3q4r5s6t7u8v9w0x1y2z3'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/cf6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -178,7 +178,7 @@ class SpotifyContent {
         'artists': [{'name': 'Payal Dev'}, {'name': 'Jubin Nautiyal'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273p3q4r5s6t7u8v9w0x1y2z3a4'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/df6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -192,7 +192,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sachet Tandon'}, {'name': 'Parampara Thakur'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273q4r5s6t7u8v9w0x1y2z3a4b5'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/ef6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -206,7 +206,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}, {'name': 'Shilpa Rao'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273r5s6t7u8v9w0x1y2z3a4b5c6'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/ff6c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -221,7 +221,7 @@ class SpotifyContent {
         'artists': [{'name': 'Ali Sethi'}, {'name': 'Shae Gill'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273s6t7u8v9w0x1y2z3a4b5c6d7'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/1g7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -235,7 +235,7 @@ class SpotifyContent {
         'artists': [{'name': 'Aima Baig'}, {'name': 'Shahzad Roy'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273t7u8v9w0x1y2z3a4b5c6d7e8'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/2g7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -249,7 +249,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sajjad Ali'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273u8v9w0x1y2z3a4b5c6d7e8f9'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/3g7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -263,7 +263,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}, {'name': 'Arijit Singh'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273v9w0x1y2z3a4b5c6d7e8f9g0'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/4g7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -277,7 +277,7 @@ class SpotifyContent {
         'artists': [{'name': 'Momina Mustehsan'}, {'name': 'Quratulain Balouch'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273w0x1y2z3a4b5c6d7e8f9g0h1'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/5g7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -292,7 +292,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}, {'name': 'Gurinder Gill'}, {'name': 'Shinda Kahlon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273x1y2z3a4b5c6d7e8f9g0h1i2'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/6g7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -306,7 +306,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}, {'name': 'Gurinder Gill'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273y2z3a4b5c6d7e8f9g0h1i2j3'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/7g7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -320,7 +320,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273z3a4b5c6d7e8f9g0h1i2j3k4'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/8g7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -334,7 +334,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273a4b5c6d7e8f9g0h1i2j3k4l5'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/9g7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -348,7 +348,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}, {'name': 'Shinda Kahlon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273b5c6d7e8f9g0h1i2j3k4l5m6'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/ag7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -363,7 +363,7 @@ class SpotifyContent {
         'artists': [{'name': 'The Weeknd'}, {'name': 'Ariana Grande'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273c6d7e8f9g0h1i2j3k4l5m6n7'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/bg7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -377,7 +377,7 @@ class SpotifyContent {
         'artists': [{'name': 'Ariana Grande'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273d7e8f9g0h1i2j3k4l5m6n7o8'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/cg7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -391,7 +391,7 @@ class SpotifyContent {
         'artists': [{'name': 'BTS'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273e8f9g0h1i2j3k4l5m6n7o8p9'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/dg7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -405,7 +405,7 @@ class SpotifyContent {
         'artists': [{'name': 'BTS'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273f9g0h1i2j3k4l5m6n7o8p9q0'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/eg7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -419,7 +419,7 @@ class SpotifyContent {
         'artists': [{'name': 'BTS'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273g0h1i2j3k4l5m6n7o8p9q0r1'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/fg7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -434,7 +434,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273h1i2j3k4l5m6n7o8p9q0r1s2'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/1h7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -448,7 +448,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273i2j3k4l5m6n7o8p9q0r1s2t3'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/2h7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -462,7 +462,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273j3k4l5m6n7o8p9q0r1s2t3u4'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/3h7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -476,7 +476,7 @@ class SpotifyContent {
         'artists': [{'name': 'Akhil Sachdeva'}, {'name': 'Monali Thakur'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273k4l5m6n7o8p9q0r1s2t3u4v5'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/4h7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -490,7 +490,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}, {'name': 'Asees Kaur'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273l5m6n7o8p9q0r1s2t3u4v5w6'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/5h7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -505,7 +505,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sidhu Moose Wala'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273m6n7o8p9q0r1s2t3u4v5w6x7'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/6h7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -519,7 +519,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sidhu Moose Wala'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273n7o8p9q0r1s2t3u4v5w6x7y8'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/7h7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -533,7 +533,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sidhu Moose Wala'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273o8p9q0r1s2t3u4v5w6x7y8z9'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/8h7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -547,7 +547,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sidhu Moose Wala'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273p9q0r1s2t3u4v5w6x7y8z9a0'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/9h7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -561,7 +561,7 @@ class SpotifyContent {
         'artists': [{'name': 'Bohemia'}, {'name': 'Sidhu Moose Wala'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273q0r1s2t3u4v5w6x7y8z9a0b1'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/ah7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -576,7 +576,7 @@ class SpotifyContent {
         'artists': [{'name': 'Ed Sheeran'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273r1s2t3u4v5w6x7y8z9a0b1c2'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/bh7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -590,7 +590,7 @@ class SpotifyContent {
         'artists': [{'name': 'Ed Sheeran'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273s2t3u4v5w6x7y8z9a0b1c2d3'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/ch7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -604,7 +604,7 @@ class SpotifyContent {
         'artists': [{'name': 'Adele'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273t3u4v5w6x7y8z9a0b1c2d3e4'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/dh7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -618,7 +618,7 @@ class SpotifyContent {
         'artists': [{'name': 'Adele'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273u4v5w6x7y8z9a0b1c2d3e4f5'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/eh7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -632,7 +632,7 @@ class SpotifyContent {
         'artists': [{'name': 'Lewis Capaldi'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273v5w6x7y8z9a0b1c2d3e4f5g6'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/fh7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -647,7 +647,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273w6x7y8z9a0b1c2d3e4f5g6h7'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/1i7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -661,7 +661,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}, {'name': 'Shreya Ghoshal'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273x7y8z9a0b1c2d3e4f5g6h7i8'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/2i7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -675,7 +675,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}, {'name': 'Tochi Raina'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273y8z9a0b1c2d3e4f5g6h7i8j9'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/3i7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -689,7 +689,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}, {'name': 'Shreya Ghoshal'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273z9a0b1c2d3e4f5g6h7i8j9k0'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/4i7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -703,7 +703,7 @@ class SpotifyContent {
         'artists': [{'name': 'B Praak'}, {'name': 'Manoj Muntashir'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273a0b1c2d3e4f5g6h7i8j9k0l1'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/5i7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -718,7 +718,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273b1c2d3e4f5g6h7i8j9k0l1m2'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/6i7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -732,7 +732,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273c2d3e4f5g6h7i8j9k0l1m2n3'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/7i7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -746,7 +746,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273d3e4f5g6h7i8j9k0l1m2n3o4'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/8i7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -760,7 +760,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273e4f5g6h7i8j9k0l1m2n3o4p5'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/9i7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -774,7 +774,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273f5g6h7i8j9k0l1m2n3o4p5q6'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/aj7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -789,7 +789,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273g6h7i8j9k0l1m2n3o4p5q6r7'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/bj7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -803,7 +803,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273h7i8j9k0l1m2n3o4p5q6r7s8'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/cj7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -817,7 +817,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273i8j9k0l1m2n3o4p5q6r7s8t9'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/dj7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -831,7 +831,7 @@ class SpotifyContent {
         'artists': [{'name': 'BTS'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273j9k0l1m2n3o4p5q6r7s8t9u0'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/ej7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -845,7 +845,7 @@ class SpotifyContent {
         'artists': [{'name': 'BTS'}, {'name': 'Halsey'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273k0l1m2n3o4p5q6r7s8t9u0v1'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/fj7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -860,7 +860,7 @@ class SpotifyContent {
         'artists': [{'name': 'Ed Sheeran'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273l1m2n3o4p5q6r7s8t9u0v1w2'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/1k7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -874,7 +874,7 @@ class SpotifyContent {
         'artists': [{'name': 'Ed Sheeran'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273m2n3o4p5q6r7s8t9u0v1w2x3'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/2k7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -888,7 +888,7 @@ class SpotifyContent {
         'artists': [{'name': 'Luis Fonsi'}, {'name': 'Daddy Yankee'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273n3o4p5q6r7s8t9u0v1w2x3y4'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/3k7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -902,7 +902,7 @@ class SpotifyContent {
         'artists': [{'name': 'Shawn Mendes'}, {'name': 'Camila Cabello'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273o4p5q6r7s8t9u0v1w2x3y4z5'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/4k7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -916,7 +916,7 @@ class SpotifyContent {
         'artists': [{'name': 'Camila Cabello'}, {'name': 'Young Thug'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273p5q6r7s8t9u0v1w2x3y4z5a6'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/5k7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -931,7 +931,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}, {'name': 'Antara Mitra'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273q6r7s8t9u0v1w2x3y4z5a6b7'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/6k7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -945,7 +945,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}, {'name': 'Antara Mitra'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273r7s8t9u0v1w2x3y4z5a6b7c8'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/7k7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -959,7 +959,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}, {'name': 'Alka Yagnik'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273s8t9u0v1w2x3y4z5a6b7c8d9'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/8k7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -973,7 +973,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273t9u0v1w2x3y4z5a6b7c8d9e0'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/9k7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -987,7 +987,7 @@ class SpotifyContent {
         'artists': [{'name': 'Caveman'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273u0v1w2x3y4z5a6b7c8d9e0f1'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/ak7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1002,7 +1002,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sidhu Moose Wala'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273v1w2x3y4z5a6b7c8d9e0f1g2'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/bk7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1016,7 +1016,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sidhu Moose Wala'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273w2x3y4z5a6b7c8d9e0f1g2h3'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/ck7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1030,7 +1030,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sidhu Moose Wala'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273x3y4z5a6b7c8d9e0f1g2h3i4'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/dk7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1044,7 +1044,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sidhu Moose Wala'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273y4z5a6b7c8d9e0f1g2h3i4j5'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/ek7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1058,7 +1058,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sidhu Moose Wala'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273z5a6b7c8d9e0f1g2h3i4j5k6'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/fk7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1073,7 +1073,7 @@ class SpotifyContent {
         'artists': [{'name': 'Tones and I'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273a6b7c8d9e0f1g2h3i4j5k6l7'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/1l7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1087,7 +1087,7 @@ class SpotifyContent {
         'artists': [{'name': 'Post Malone'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273b7c8d9e0f1g2h3i4j5k6l7m8'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/2l7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1101,7 +1101,7 @@ class SpotifyContent {
         'artists': [{'name': 'Post Malone'}, {'name': 'Swae Lee'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273c8d9e0f1g2h3i4j5k6l7m8n9'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/3l7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1115,7 +1115,7 @@ class SpotifyContent {
         'artists': [{'name': 'Post Malone'}, {'name': '21 Savage'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273d9e0f1g2h3i4j5k6l7m8n9o0'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/4l7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1129,7 +1129,7 @@ class SpotifyContent {
         'artists': [{'name': 'Post Malone'}, {'name': 'Ty Dolla \$ign'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273e0f1g2h3i4j5k6l7m8n9o0p1'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/5l7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1144,7 +1144,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}, {'name': 'Parampara Thakur'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273f1g2h3i4j5k6l7m8n9o0p1q2'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/6l7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1158,7 +1158,7 @@ class SpotifyContent {
         'artists': [{'name': 'Akhil Sachdeva'}, {'name': 'Monali Thakur'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273g2h3i4j5k6l7m8n9o0p1q2r3'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/7l7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1172,7 +1172,7 @@ class SpotifyContent {
         'artists': [{'name': 'Arijit Singh'}, {'name': 'Asees Kaur'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273h3i4j5k6l7m8n9o0p1q2r3s4'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/8l7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1186,7 +1186,7 @@ class SpotifyContent {
         'artists': [{'name': 'Payal Dev'}, {'name': 'Jubin Nautiyal'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273i4j5k6l7m8n9o0p1q2r3s4t5'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/9l7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1200,7 +1200,7 @@ class SpotifyContent {
         'artists': [{'name': 'Sachet Tandon'}, {'name': 'Parampara Thakur'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273j5k6l7m8n9o0p1q2r3s4t5u6'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/al7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1215,7 +1215,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273k6l7m8n9o0p1q2r3s4t5u6v7'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/bl7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1229,7 +1229,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273l7m8n9o0p1q2r3s4t5u6v7w8'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/cl7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1243,7 +1243,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273m8n9o0p1q2r3s4t5u6v7w8x9'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/dl7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1257,7 +1257,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273n9o0p1q2r3s4t5u6v7w8x9y0'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/el7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1271,7 +1271,7 @@ class SpotifyContent {
         'artists': [{'name': 'Atif Aslam'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273o0p1q2r3s4t5u6v7w8x9y0z1'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/fl7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1286,7 +1286,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273p1q2r3s4t5u6v7w8x9y0z1a2'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/1m7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1300,7 +1300,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273q2r3s4t5u6v7w8x9y0z1a2b3'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/2m7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1314,7 +1314,7 @@ class SpotifyContent {
         'artists': [{'name': 'AP Dhillon'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273r3s4t5u6v7w8x9y0z1a2b3c4'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/3m7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1328,7 +1328,7 @@ class SpotifyContent {
         'artists': [{'name': 'BTS'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273s4t5u6v7w8x9y0z1a2b3c4d5'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/4m7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1342,7 +1342,7 @@ class SpotifyContent {
         'artists': [{'name': 'BTS'}, {'name': 'Halsey'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273t5u6v7w8x9y0z1a2b3c4d5e6'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/5m7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1357,7 +1357,7 @@ class SpotifyContent {
         'artists': [{'name': 'Ed Sheeran'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273u6v7w8x9y0z1a2b3c4d5e6f7'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/6m7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1371,7 +1371,7 @@ class SpotifyContent {
         'artists': [{'name': 'Ed Sheeran'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273v7w8x9y0z1a2b3c4d5e6f7g8'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/7m7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1385,7 +1385,7 @@ class SpotifyContent {
         'artists': [{'name': 'Luis Fonsi'}, {'name': 'Daddy Yankee'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273w8x9y0z1a2b3c4d5e6f7g8h9'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/8m7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1399,7 +1399,7 @@ class SpotifyContent {
         'artists': [{'name': 'Shawn Mendes'}, {'name': 'Camila Cabello'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273x9y0z1a2b3c4d5e6f7g8h9i0'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/9m7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1413,7 +1413,7 @@ class SpotifyContent {
         'artists': [{'name': 'Camila Cabello'}, {'name': 'Young Thug'}],
         'album': {
           'images': [
-            {'url': 'https://i.scdn.co/image/ab67616d0000b273y0z1a2b3c4d5e6f7g8h9i0j1'}
+            {'url': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'}
           ]
         },
         'preview_url': 'https://p.scdn.co/mp3-preview/am7c8b8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
@@ -1423,13 +1423,27 @@ class SpotifyContent {
       },
     ];
     
+    // Process tracks to ensure valid URLs
+    final processedTracks = mockTracks.map((track) {
+      // If the external URL is invalid (contains simple numbers), create a search URL
+      final externalUrl = (track['external_urls'] as Map<String, dynamic>?)?['spotify'] as String?;
+      if (externalUrl != null && externalUrl.contains('/track/') && 
+          RegExp(r'/track/\d+$').hasMatch(externalUrl)) {
+        // This is a fake URL, replace with search URL
+        track['external_urls'] = {
+          'spotify': 'https://open.spotify.com/search/${Uri.encodeComponent(track['name'] as String)}'
+        };
+      }
+      return track;
+    }).toList();
+    
     // For unlimited content, return all tracks if query is generic
     if (['popular', 'trending', 'hits', 'charts', 'top', 'viral', 'new', 'hot', 'music', 'song', 'track', 'latest', 'best', 'favorite', 'love', 'desi', 'bollywood', 'punjabi', 'pakistani', 'indian', 'english'].contains(query.toLowerCase())) {
-      return mockTracks.take(limit).toList();
+      return processedTracks.take(limit).toList();
     }
     
     // For specific queries, filter by name
-    return mockTracks
+    return processedTracks
         .where((track) => track['name'].toString().toLowerCase().contains(query.toLowerCase()))
         .take(limit)
         .toList();

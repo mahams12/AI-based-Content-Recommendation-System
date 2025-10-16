@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/content_model.dart';
 import '../../../../core/widgets/media_player.dart';
+import '../../../../core/widgets/safe_network_image.dart';
 import '../../../home/presentation/widgets/mood_selector.dart';
 
 class MoodBasedRecommendationsScreen extends ConsumerStatefulWidget {
@@ -714,30 +715,16 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
                 ),
-                child: item.thumbnailUrl.isNotEmpty
-                    ? Image.network(
-                        item.thumbnailUrl,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: _getMoodColors(_selectedMood)[0].withOpacity(0.3),
-                            child: Icon(
-                              _getPlatformIcon(item.platform),
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          );
-                        },
-                      )
-                    : Container(
-                        color: _getMoodColors(_selectedMood)[0].withOpacity(0.3),
-                        child: Icon(
-                          _getPlatformIcon(item.platform),
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
+                child: SafeNetworkImage(
+                  imageUrl: item.thumbnailUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                  platform: item.platform,
+                ),
               ),
             ),
             Padding(
@@ -816,16 +803,6 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
     }
   }
 
-  IconData _getPlatformIcon(ContentType platform) {
-    switch (platform) {
-      case ContentType.youtube:
-        return Icons.play_arrow_rounded;
-      case ContentType.tmdb:
-        return Icons.movie_rounded;
-      case ContentType.spotify:
-        return Icons.music_note_rounded;
-    }
-  }
 
   String _getCategoryDisplayName(String category) {
     switch (category) {
