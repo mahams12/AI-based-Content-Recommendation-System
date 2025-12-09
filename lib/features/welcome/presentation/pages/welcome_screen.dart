@@ -8,6 +8,7 @@ import '../providers/mood_provider.dart';
 import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_input_field.dart';
 import '../widgets/typing_indicator.dart';
+import 'voice_mood_detection_screen.dart';
 
 class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key});
@@ -183,29 +184,12 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
   }
 
   void _startVoiceInterface() {
-    // For now, show coming soon message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Voice mood assessment coming soon! 🎤',
-          style: GoogleFonts.inter(
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        backgroundColor: AppTheme.accentColor,
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+    // Navigate to voice mood detection screen
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const VoiceMoodDetectionScreen(),
       ),
     );
-    
-    // For demo purposes, start chat interface after showing message
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      _startChatInterface();
-    });
   }
 
   void _addBotMessage(String text) {
@@ -538,36 +522,13 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              'Voice Interface',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: AppTheme.accentColor.withOpacity(0.2),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: Text(
-                                                'Soon',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: AppTheme.accentColor,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                        Text(
+                                          'Voice Interface',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
                                         ),
                                         const SizedBox(height: 4),
                                         Text(

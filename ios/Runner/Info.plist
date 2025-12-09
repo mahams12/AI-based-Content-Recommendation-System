@@ -45,6 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need access to your microphone to record your voice responses for mood detection.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
