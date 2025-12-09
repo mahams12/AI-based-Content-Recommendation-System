@@ -183,7 +183,7 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble>
                             ),
                           ),
                         );
-                      }).toList(),
+                      }),
                     
                     // Timestamp
                     Padding(

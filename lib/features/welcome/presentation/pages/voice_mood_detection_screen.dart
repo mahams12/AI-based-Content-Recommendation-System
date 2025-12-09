@@ -30,8 +30,8 @@ class _VoiceMoodDetectionScreenState extends ConsumerState<VoiceMoodDetectionScr
   bool _isRecording = false;
   bool _isProcessing = false;
   bool _isInitialized = false;
-  List<String> _recordedAudioPaths = [];
-  Map<String, dynamic> _moodData = {};
+  final List<String> _recordedAudioPaths = [];
+  final Map<String, dynamic> _moodData = {};
 
   final List<VoiceQuestion> _questions = [
     VoiceQuestion(

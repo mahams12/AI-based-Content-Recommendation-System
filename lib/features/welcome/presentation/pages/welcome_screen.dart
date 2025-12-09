@@ -41,7 +41,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
   bool _isTypingMessage = false;
   bool _isWaitingForInput = false;
   int _currentQuestionIndex = 0;
-  Map<String, dynamic> _moodData = {};
+  final Map<String, dynamic> _moodData = {};
 
   final List<String> _conversationMessages = [
     "Hi! 👋 Welcome to ContentNation!",
@@ -137,7 +137,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
   }
 
   void _checkIfFirstTime() async {
-    final hasCompletedWelcome = await StorageService.getBool('has_completed_welcome');
+    final hasCompletedWelcome = StorageService.getBool('has_completed_welcome');
     if (hasCompletedWelcome == true) {
       _navigateToHome();
     }
@@ -485,7 +485,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
                       ),
                       
                       // Voice Option
-                      Container(
+                      SizedBox(
                         width: double.infinity,
                         child: Material(
                           color: Colors.transparent,

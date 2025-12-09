@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/models/content_model.dart';
 
 class TMDBGenreFilter extends StatefulWidget {
   final List<String> selectedGenres;

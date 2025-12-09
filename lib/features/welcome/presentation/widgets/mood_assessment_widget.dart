@@ -26,7 +26,7 @@ class _MoodAssessmentDialogState extends State<MoodAssessmentDialog>
 
   int _currentQuestionIndex = 0;
   String? _selectedAnswer;
-  Map<String, dynamic> _moodData = {};
+  final Map<String, dynamic> _moodData = {};
 
   final List<MoodQuestion> _questions = [
     MoodQuestion(
@@ -348,7 +348,7 @@ class _MoodAssessmentDialogState extends State<MoodAssessmentDialog>
                             ),
                           ),
                         );
-                      }).toList(),
+                      }),
                       
                       const SizedBox(height: 24),
                       

@@ -1,4 +1,5 @@
 /// Interface for voice mood detection service
+library;
 import 'voice_mood_result.dart';
 
 abstract class VoiceMoodServiceInterface {

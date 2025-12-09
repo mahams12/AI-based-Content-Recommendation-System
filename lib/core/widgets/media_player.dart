@@ -17,7 +17,7 @@ class MediaPlayer extends StatefulWidget {
 }
 
 class _MediaPlayerState extends State<MediaPlayer> {
-  bool _isPlaying = false;
+  final bool _isPlaying = false;
   bool _isLoading = false;
 
   @override

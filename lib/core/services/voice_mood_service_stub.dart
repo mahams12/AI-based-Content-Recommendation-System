@@ -1,4 +1,5 @@
 /// Stub implementation for web platform where TFLite is not available
+library;
 import 'voice_mood_service_interface.dart';
 import 'voice_mood_result.dart';
 
@@ -9,9 +10,8 @@ VoiceMoodServiceInterface createVoiceMoodService() {
 
 /// Stub service for voice mood detection on web
 class VoiceMoodServiceStub implements VoiceMoodServiceInterface {
-  static final VoiceMoodService _instance = VoiceMoodService._internal();
-  factory VoiceMoodService() => _instance;
-  VoiceMoodService._internal();
+  VoiceMoodServiceStub._internal();
+  factory VoiceMoodServiceStub() => VoiceMoodServiceStub._internal();
 
   @override
   Future<bool> initialize() async {
