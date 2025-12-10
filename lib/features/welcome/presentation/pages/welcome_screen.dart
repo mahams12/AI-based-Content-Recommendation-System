@@ -137,10 +137,13 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
   }
 
   void _checkIfFirstTime() async {
-    final hasCompletedWelcome = StorageService.getBool('has_completed_welcome');
-    if (hasCompletedWelcome == true) {
-      _navigateToHome();
-    }
+    // Use WidgetsBinding to ensure this runs after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final hasCompletedWelcome = StorageService.getBool('has_completed_welcome');
+      if (hasCompletedWelcome == true && mounted) {
+        _navigateToHome();
+      }
+    });
   }
 
   void _startWelcomeSequence() async {

@@ -5,9 +5,11 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/content_model.dart';
 import '../../../../core/widgets/safe_network_image.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../welcome/presentation/widgets/mood_assessment_widget.dart';
 import '../../../welcome/presentation/providers/mood_provider.dart';
+import '../../../welcome/presentation/pages/welcome_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -179,6 +181,17 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
+        
+        // Start Over (for testing)
+        _buildSettingsTile(
+          context,
+          icon: Icons.refresh,
+          title: 'Start Over',
+          subtitle: 'Reset mood assessment and start fresh',
+          onTap: () => _showStartOverDialog(context, ref),
+        ),
+        
+        const SizedBox(height: 8),
         
         // Sign Out
         _buildSettingsTile(
@@ -352,26 +365,31 @@ class ProfileScreen extends ConsumerWidget {
             onPressed: () async {
               Navigator.of(context).pop();
               try {
+                // Clear all user data
                 await ref.read(authServiceProvider).signOut();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Signed out successfully',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                    ),
-                    backgroundColor: AppTheme.successColor,
-                  ),
-                );
+                // Clear welcome completion flag so user can go through onboarding again
+                await StorageService.setBool('has_completed_welcome', false);
+                await StorageService.remove('user_mood_data');
+                
+                // Navigate to login screen
+                if (context.mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/login',
+                    (route) => false,
+                  );
+                }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Sign out failed: $e',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Sign out failed: $e',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                      ),
+                      backgroundColor: AppTheme.errorColor,
                     ),
-                    backgroundColor: AppTheme.errorColor,
-                  ),
-                );
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -379,6 +397,74 @@ class ProfileScreen extends ConsumerWidget {
             ),
             child: const Text(
               'Sign Out',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showStartOverDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1C2128),
+        title: const Text(
+          'Start Over',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        content: const Text(
+          'This will reset your mood assessment and take you back to the welcome screen. Continue?',
+          style: TextStyle(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              try {
+                // Clear welcome completion and mood data
+                await StorageService.setBool('has_completed_welcome', false);
+                await StorageService.remove('user_mood_data');
+                await StorageService.remove('mood_detection_method');
+                
+                // Clear mood provider state
+                ref.read(moodProvider.notifier).clearMoodData();
+                
+                // Navigate to welcome screen
+                if (context.mounted) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => const WelcomeScreen(),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Failed to reset: $e',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                      ),
+                      backgroundColor: AppTheme.errorColor,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+            ),
+            child: const Text(
+              'Start Over',
               style: TextStyle(color: Colors.white),
             ),
           ),

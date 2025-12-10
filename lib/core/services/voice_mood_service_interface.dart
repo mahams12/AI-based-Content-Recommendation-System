@@ -8,3 +8,5 @@ abstract class VoiceMoodServiceInterface {
   Future<VoiceMoodResult> analyzeMultipleResponses(List<String> audioPaths);
   void dispose();
 }
+
+

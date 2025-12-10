@@ -398,8 +398,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
       },
       child: Container(
-        height: 240, // Increased height for better content display
-        padding: const EdgeInsets.all(16),
+        constraints: const BoxConstraints(
+          minHeight: 280,
+          maxHeight: 300,
+        ),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: const Color(0xFF1C2128),
           borderRadius: BorderRadius.circular(16),
@@ -416,43 +419,63 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Header with icon and title
             Row(
               children: [
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        color.withOpacity(0.4),
+                        color.withOpacity(0.2),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
                   child: Icon(
                     icon,
                     color: color,
-                    size: 18,
+                    size: 28,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     title,
                     style: TextStyle(
                       color: color,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             // Content area with proper constraints
-            Expanded(
+            Flexible(
               child: items.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             icon,
@@ -470,111 +493,143 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ],
                       ),
                     )
-                  : Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: double.infinity,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: items.take(3).length,
-                              itemBuilder: (context, index) {
-                                final item = items[index];
-                                return Container(
-                                  width: 85, // Good size, not too small
-                                  margin: const EdgeInsets.only(right: 8),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        height: 85, // Good size for thumbnails
-                                        width: 85,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(12),
-                                          gradient: LinearGradient(
-                                            colors: _getGradientColors(item),
-                                          ),
-                                        ),
-                                        child: Stack(
-                                          children: [
-                                            if (item.thumbnailUrl.isNotEmpty)
-                                              ClipRRect(
-                                                borderRadius: BorderRadius.circular(12),
-                                                child: SafeNetworkImage(
-                                                  imageUrl: item.thumbnailUrl,
-                                                  fit: BoxFit.cover,
-                                                  width: double.infinity,
-                                                  height: double.infinity,
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  platform: item.platform,
-                                                ),
-                                              )
-                                            else
-                                              Center(
-                                                child: Icon(
-                                                  icon,
-                                                  size: 24,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Expanded(
-                                        child: Text(
-                                          item.title,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.center,
-                                        ),
+                  : SizedBox(
+                      height: 120,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: items.take(3).length,
+                        itemBuilder: (context, index) {
+                          final item = items[index];
+                          return Container(
+                            width: 100,
+                            margin: const EdgeInsets.only(right: 10),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  height: 100,
+                                  width: 100,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: _getGradientColors(item),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.4),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 6),
+                                        spreadRadius: 1,
                                       ),
                                     ],
                                   ),
-                                );
-                              },
+                                  child: Stack(
+                                    children: [
+                                      if (item.thumbnailUrl.isNotEmpty)
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(16),
+                                          child: SafeNetworkImage(
+                                            imageUrl: item.thumbnailUrl,
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                            height: double.infinity,
+                                            borderRadius: BorderRadius.circular(16),
+                                            platform: item.platform,
+                                          ),
+                                        )
+                                      else
+                                        Center(
+                                          child: Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              icon,
+                                              size: 44,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  height: 28,
+                                  width: 100,
+                                  child: Text(
+                                    item.title,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.0,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ),
-                      ],
+                          );
+                        },
+                      ),
                     ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             // See All Button - replaces the number display
             Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [
-                    color.withOpacity(0.2),
-                    color.withOpacity(0.1),
-                  ]),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      color.withOpacity(0.25),
+                      color.withOpacity(0.15),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: color.withOpacity(0.3),
+                    color: color.withOpacity(0.4),
+                    width: 1.5,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      'See All',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        'See All',
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 5),
                     Icon(
                       Icons.arrow_forward_rounded,
                       color: color,
-                      size: 12,
+                      size: 16,
                     ),
                   ],
                 ),
@@ -629,17 +684,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    _getCategoryIcon(categories[index]),
-                    size: 18,
-                    color: isSelected ? Colors.white : Colors.grey[400],
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? Colors.white.withOpacity(0.2) 
+                          : Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      _getCategoryIcon(categories[index]),
+                      size: 22,
+                      color: isSelected ? Colors.white : Colors.grey[400],
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Text(
                     categories[index],
                     style: TextStyle(
                       color: isSelected ? Colors.white : Colors.grey[400],
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                       letterSpacing: -0.2,
                     ),
@@ -732,22 +796,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF667eea), Color(0xFF764ba2)],
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF667eea).withOpacity(0.3),
+                        color: const Color(0xFF667eea).withOpacity(0.4),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: Icon(icon, color: Colors.white, size: 22),
+                  child: Icon(icon, color: Colors.white, size: 26),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -788,7 +852,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         const SizedBox(width: 6),
                         const Icon(
                           Icons.arrow_forward_rounded,
-                          size: 14,
+                          size: 18,
                           color: Color(0xFF667eea),
                         ),
                       ],
@@ -1045,32 +1109,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       left: 12,
                       right: 12,
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           if (item.viewCount != null) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.visibility_rounded,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _formatNumber(item.viewCount!),
-                                    style: const TextStyle(
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.visibility_rounded,
+                                      size: 12,
                                       color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        _formatNumber(item.viewCount!),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -1101,58 +1171,66 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             // Content info
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16), // Reduced padding for more space
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15, // Slightly smaller font
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
+                    SizedBox(
+                      height: 36,
+                      child: Text(
+                        item.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6), // Reduced spacing
-                    Text(
-                      item.platform == ContentType.tmdb 
-                        ? _getTMDBSubtitle(item)
-                        : (item.channelName ?? item.artistName ?? item.description),
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 13, // Slightly smaller font
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 16,
+                      child: Text(
+                        item.platform == ContentType.tmdb 
+                          ? _getTMDBSubtitle(item)
+                          : (item.channelName ?? item.artistName ?? item.description),
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 6),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Expanded(
                           child: Container(
-                            height: 2, // Thinner progress bar
+                            height: 2,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(colors: colors),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8), // Reduced spacing
+                        const SizedBox(width: 6),
                         Container(
-                          width: 28, // Smaller button
-                          height: 28,
+                          width: 22,
+                          height: 22,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(colors: colors),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(11),
                           ),
                           child: const Icon(
                             Icons.arrow_forward_rounded,
                             color: Colors.white,
-                            size: 14, // Smaller icon
+                            size: 11,
                           ),
                         ),
                       ],
