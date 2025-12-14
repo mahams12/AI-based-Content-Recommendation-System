@@ -71,14 +71,31 @@ class ContentItem extends Equatable {
     final mediumThumbnail = thumbnails['medium'] ?? {};
     final highThumbnail = thumbnails['high'] ?? {};
     
+    // Handle both search result format (id.videoId) and trending format (id as string)
+    final videoId = json['id'] is Map 
+        ? (json['id']['videoId'] ?? '')
+        : (json['id'] ?? '');
+    final title = snippet['title'] ?? '';
+    
+    // Check if this is a mock video ID (starts with 'youtube_video_')
+    // If so, create a search URL instead of a direct video URL
+    final String externalUrl;
+    if (videoId.startsWith('youtube_video_') || videoId.isEmpty) {
+      // For mock content, redirect to YouTube search
+      externalUrl = 'https://www.youtube.com/results?search_query=${Uri.encodeComponent(title)}';
+    } else {
+      // For real YouTube video IDs, use direct video URL
+      externalUrl = 'https://www.youtube.com/watch?v=$videoId';
+    }
+    
     return ContentItem(
-      id: json['id']['videoId'] ?? '',
-      title: snippet['title'] ?? '',
+      id: videoId,
+      title: title,
       description: snippet['description'] ?? '',
       thumbnailUrl: highThumbnail['url'] ?? 
                     mediumThumbnail['url'] ?? 
                     defaultThumbnail['url'] ?? '',
-      externalUrl: 'https://www.youtube.com/watch?v=${json['id']['videoId']}',
+      externalUrl: externalUrl,
       platform: ContentType.youtube,
       category: ContentCategory.video,
       channelName: snippet['channelTitle'] ?? '',
@@ -100,14 +117,28 @@ class ContentItem extends Equatable {
     final mediumThumbnail = thumbnails['medium'] ?? {};
     final highThumbnail = thumbnails['high'] ?? {};
     
+    final videoId = json['id'] ?? '';
+    final title = snippet['title'] ?? '';
+    
+    // Check if this is a mock video ID (starts with 'youtube_video_')
+    // If so, create a search URL instead of a direct video URL
+    final String externalUrl;
+    if (videoId.startsWith('youtube_video_') || videoId.isEmpty) {
+      // For mock content, redirect to YouTube search
+      externalUrl = 'https://www.youtube.com/results?search_query=${Uri.encodeComponent(title)}';
+    } else {
+      // For real YouTube video IDs, use direct video URL
+      externalUrl = 'https://www.youtube.com/watch?v=$videoId';
+    }
+    
     return ContentItem(
-      id: json['id'] ?? '',
-      title: snippet['title'] ?? '',
+      id: videoId,
+      title: title,
       description: snippet['description'] ?? '',
       thumbnailUrl: highThumbnail['url'] ?? 
                     mediumThumbnail['url'] ?? 
                     defaultThumbnail['url'] ?? '',
-      externalUrl: 'https://www.youtube.com/watch?v=${json['id']}',
+      externalUrl: externalUrl,
       platform: ContentType.youtube,
       category: ContentCategory.video,
       channelName: snippet['channelTitle'] ?? '',
@@ -138,11 +169,17 @@ class ContentItem extends Equatable {
       category = ContentCategory.movie; // default
     }
     
+    final contentId = json['id']?.toString() ?? '';
+    final externalUrl = category == ContentCategory.movie
+        ? 'https://www.themoviedb.org/movie/$contentId'
+        : 'https://www.themoviedb.org/tv/$contentId';
+    
     return ContentItem(
-      id: json['id']?.toString() ?? '',
+      id: contentId,
       title: json['title'] ?? json['name'] ?? '',
       description: json['overview'] ?? '',
       thumbnailUrl: thumbnailUrl,
+      externalUrl: externalUrl,
       platform: ContentType.tmdb,
       category: category,
       genres: (json['genre_ids'] as List<dynamic>?)

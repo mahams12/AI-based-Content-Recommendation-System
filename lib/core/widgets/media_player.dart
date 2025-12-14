@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/content_model.dart';
+import '../services/history_service.dart';
 import 'favorite_button.dart';
 import 'safe_network_image.dart';
 
@@ -19,6 +20,23 @@ class MediaPlayer extends StatefulWidget {
 class _MediaPlayerState extends State<MediaPlayer> {
   final bool _isPlaying = false;
   bool _isLoading = false;
+  final HistoryService _historyService = HistoryService();
+  bool _historyAdded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeHistory();
+  }
+
+  Future<void> _initializeHistory() async {
+    await _historyService.init();
+    // Add to history when MediaPlayer opens
+    if (!_historyAdded) {
+      await _historyService.addToHistory(widget.content);
+      _historyAdded = true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +266,9 @@ class _MediaPlayerState extends State<MediaPlayer> {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handlePlay,
+                    onPressed: _isLoading ? null : () {
+                      _handlePlay();
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _getGradientColors()[0],
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -343,6 +363,8 @@ class _MediaPlayerState extends State<MediaPlayer> {
   }
 
   Future<void> _handlePlay() async {
+    if (_isLoading) return; // Prevent multiple clicks
+    
     setState(() {
       _isLoading = true;
     });
@@ -353,8 +375,16 @@ class _MediaPlayerState extends State<MediaPlayer> {
       
       switch (widget.content.platform) {
         case ContentType.youtube:
-          url = widget.content.externalUrl ?? 
-                'https://www.youtube.com/watch?v=${widget.content.id}';
+          // Use externalUrl if available, otherwise construct from ID
+          if (widget.content.externalUrl != null && widget.content.externalUrl!.isNotEmpty) {
+            url = widget.content.externalUrl!;
+          } else if (widget.content.id.isNotEmpty && !widget.content.id.startsWith('youtube_video_')) {
+            // Only use direct video URL if ID is a real YouTube video ID
+            url = 'https://www.youtube.com/watch?v=${widget.content.id}';
+          } else {
+            // For mock content, redirect to YouTube search
+            url = 'https://www.youtube.com/results?search_query=${Uri.encodeComponent(widget.content.title)}';
+          }
           break;
         case ContentType.spotify:
           // Always redirect to Spotify - no preview playback
@@ -365,42 +395,91 @@ class _MediaPlayerState extends State<MediaPlayer> {
             url = 'https://open.spotify.com/search/${Uri.encodeComponent(widget.content.title)}';
           }
           break;
-        case ContentType.tmdb:
-          // For TMDB, show details or open in browser
-          url = widget.content.externalUrl ?? 
-                'https://www.themoviedb.org/movie/${widget.content.id}';
-          break;
+      case ContentType.tmdb:
+        // For TMDB, try external URL first, then fallback to search
+        if (widget.content.externalUrl != null && widget.content.externalUrl!.isNotEmpty) {
+          url = widget.content.externalUrl!;
+        } else {
+          // Fallback: redirect to TMDB search for the movie
+          url = 'https://www.themoviedb.org/search?query=${Uri.encodeComponent(widget.content.title)}';
+        }
+        break;
       }
 
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+      print('🔗 Attempting to launch URL: $url');
+      
+      try {
+        final uri = Uri.parse(url);
         
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Opening ${widget.content.title} in ${widget.content.platform.name}'),
-            backgroundColor: widget.content.platform == ContentType.spotify 
-                ? const Color(0xFF1DB954) 
-                : const Color(0xFF667eea),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      } else {
-        _showError('Could not open ${widget.content.platform.name}');
+        // Try to launch URL directly - canLaunchUrl can be unreliable on Android
+        try {
+          print('🚀 Launching with externalApplication mode...');
+          final launched = await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
+          
+          print('✅ Launch result: $launched');
+          
+          if (launched) {
+            // Close the dialog after successful launch
+            if (mounted) {
+              Navigator.of(context).pop();
+              
+              // Show success message
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Opening ${widget.content.title}...'),
+                  backgroundColor: widget.content.platform == ContentType.spotify 
+                      ? const Color(0xFF1DB954) 
+                      : widget.content.platform == ContentType.youtube
+                          ? const Color(0xFFFF4444)
+                          : const Color(0xFF667eea),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          } else {
+            // If launchUrl returns false, try with platformDefault mode
+            print('⚠️ ExternalApplication failed, trying platformDefault...');
+            try {
+              final launched2 = await launchUrl(
+                uri,
+                mode: LaunchMode.platformDefault,
+              );
+              print('✅ PlatformDefault launch result: $launched2');
+              if (launched2 && mounted) {
+                Navigator.of(context).pop();
+              } else {
+                _showError('Could not open ${widget.content.platform.name}. Please install the app or try again.');
+              }
+            } catch (e2) {
+              print('❌ PlatformDefault error: $e2');
+              _showError('Could not open ${widget.content.platform.name}. Error: ${e2.toString()}');
+            }
+          }
+        } catch (launchError) {
+          // If launchUrl throws an error, show helpful message
+          print('❌ Launch error: $launchError');
+          _showError('Could not open ${widget.content.platform.name}. Please make sure the app is installed or try opening in browser.');
+        }
+      } catch (e) {
+        print('❌ URL parse error: $e');
+        _showError('Invalid URL: ${e.toString()}');
       }
     } catch (e) {
+      print('❌ General error: $e');
       _showError('Error opening content: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

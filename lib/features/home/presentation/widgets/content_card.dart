@@ -30,10 +30,11 @@ class ContentCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppConstants.borderRadius),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Thumbnail
-            Expanded(
-              flex: 3,
+            // Thumbnail - Use fixed height instead of Expanded for ListView compatibility
+            AspectRatio(
+              aspectRatio: 16 / 9,
               child: Stack(
                 children: [
                   ClipRRect(
@@ -120,10 +121,8 @@ class ContentCard extends StatelessWidget {
               ),
             ),
             
-            // Content info
-            Expanded(
-              flex: 1,
-              child: Padding(
+            // Content info - Use fixed padding instead of Expanded
+            Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,7 +149,7 @@ class ContentCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     
-                    const Spacer(),
+                    const SizedBox(height: 8),
                     
                     // Stats row
                     Row(
@@ -202,7 +201,6 @@ class ContentCard extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
             ),
           ],
         ),

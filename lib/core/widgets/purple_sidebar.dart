@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/recommendations/presentation/pages/mood_based_recommendations_screen.dart';
 import '../../features/history/presentation/pages/history_screen.dart';
 import '../../features/favorites/presentation/pages/favorites_screen.dart';
+import '../../features/welcome/presentation/pages/simple_voice_welcome_screen.dart';
 
 class PurpleSidebar extends ConsumerStatefulWidget {
   final int currentIndex;
@@ -67,16 +68,7 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
       case 0: // Home
         widget.onTap(0);
         break;
-      case 1: // YouTube Videos
-        widget.onTap(1);
-        break;
-      case 2: // Music
-        widget.onTap(2);
-        break;
-      case 3: // Movies
-        widget.onTap(3);
-        break;
-      case 4: // Mood-Based Recommendations
+      case 1: // Mood-Based Recommendations
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -84,7 +76,15 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
           ),
         );
         break;
-      case 5: // History
+      case 2: // Voice Mood Detection
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SimpleVoiceWelcomeScreen(),
+          ),
+        );
+        break;
+      case 3: // History
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -92,7 +92,7 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
           ),
         );
         break;
-      case 6: // Favorites
+      case 4: // Favorites
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -100,7 +100,7 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
           ),
         );
         break;
-      case 7: // Profile
+      case 5: // Profile
         widget.onTap(4);
         break;
     }
@@ -214,13 +214,11 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     children: [
                       _buildNavItem(Icons.home_rounded, 'Home', 0),
-                      _buildNavItem(Icons.play_circle_filled, 'YouTube Videos', 1),
-                      _buildNavItem(Icons.music_note_rounded, 'Music', 2),
-                      _buildNavItem(Icons.movie_creation_rounded, 'Movies', 3),
-                      _buildNavItem(Icons.mood_rounded, 'Mood-Based Recommendations', 4),
-                      _buildNavItem(Icons.history_rounded, 'History', 5),
-                      _buildNavItem(Icons.favorite_rounded, 'Favorites', 6),
-                      _buildNavItem(Icons.person_rounded, 'Profile', 7),
+                      _buildNavItem(Icons.mood_rounded, 'Mood-Based Recommendations', 1),
+                      _buildNavItem(Icons.mic_rounded, 'Voice Mood Detection', 2),
+                      _buildNavItem(Icons.history_rounded, 'History', 3),
+                      _buildNavItem(Icons.favorite_rounded, 'Favorites', 4),
+                      _buildNavItem(Icons.person_rounded, 'Profile', 5),
                     ],
                   ),
                 ),

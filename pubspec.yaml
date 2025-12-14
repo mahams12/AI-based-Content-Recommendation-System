@@ -28,8 +28,9 @@ dependencies:
   dio: ^5.9.0
   
   # Authentication
-  firebase_core: ^2.31.0
-  firebase_auth: ^4.19.5
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.3
   google_sign_in: ^6.2.1
   
   # Local Storage
@@ -59,7 +60,11 @@ dependencies:
   record: ^5.2.1  # Audio recording
   permission_handler: ^11.3.1  # Microphone permissions
   path_provider: ^2.1.2  # File system access for audio files
+<<<<<<< HEAD
   just_audio: ^0.9.36  # Audio decoding and processing
+=======
+  just_audio: ^0.9.40  # Audio decoding and processing
+>>>>>>> e0288a4 (fixes)
   
   # AI & ML Libraries
   collection: ^1.18.0
@@ -88,4 +93,10 @@ flutter:
     - assets/icons/
     - assets/animations/
     - assets/models/
+<<<<<<< HEAD
     - assets/models/voice/my_model.tflite
+=======
+    - assets/models/voice/
+    - assets/models/voice/yamnet_classifier_int8.tflite
+    - assets/models/voice/label_map.json
+>>>>>>> e0288a4 (fixes)

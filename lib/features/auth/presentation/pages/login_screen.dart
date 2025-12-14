@@ -72,52 +72,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-
-  Future<void> _resetPassword() async {
-    if (_emailController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please enter your email address first',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-          ),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
-      return;
-    }
-
-    try {
-      await ref.read(authServiceProvider).sendPasswordResetEmail(
-        _emailController.text.trim(),
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Password reset email sent! Check your inbox.',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-            ),
-            backgroundColor: AppTheme.successColor,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e.toString(),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-            ),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -275,17 +229,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               }
                               return null;
                             },
-                          ),
-                          
-                          const SizedBox(height: 8),
-                          
-                          // Forgot Password
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: _resetPassword,
-                              child: const Text('Forgot Password?'),
-                            ),
                           ),
                           
                           const SizedBox(height: 24),

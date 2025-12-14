@@ -95,13 +95,13 @@ class _TrendingContentScrollerState extends State<TrendingContentScroller>
         final genreId = _getGenreIdFromName(_selectedGenre!);
         response = await _apiService.getTMDBMoviesByGenre(
           genreId: genreId,
-          maxResults: 100,
+          maxResults: 200,
         );
       } else {
-        // Use regular extended trending content API
+        // Use regular extended trending content API - fetch maximum content
         response = await _apiService.getExtendedTrendingContent(
           platform: widget.platform,
-          maxResults: 100,
+          maxResults: 200,
         );
       }
 
@@ -429,7 +429,7 @@ class _TrendingContentScrollerState extends State<TrendingContentScroller>
           padding: const EdgeInsets.all(20),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.85,
+            childAspectRatio: 0.75, // Reduced to prevent overflow
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
           ),
@@ -613,9 +613,9 @@ class _TrendingContentScrollerState extends State<TrendingContentScroller>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Title
-                            Expanded(
-                              flex: 3,
+                            // Title - Fixed height to prevent overflow
+                            SizedBox(
+                              height: 32,
                               child: Text(
                                 item.title,
                                 style: const TextStyle(
@@ -628,10 +628,10 @@ class _TrendingContentScrollerState extends State<TrendingContentScroller>
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            // Subtitle (Channel/Artist/Genre for TMDB)
-                            Expanded(
-                              flex: 2,
+                            const SizedBox(height: 4),
+                            // Subtitle (Channel/Artist/Genre for TMDB) - Fixed height
+                            SizedBox(
+                              height: 16,
                               child: Text(
                                 item.platform == ContentType.tmdb 
                                   ? _getTMDBSubtitle(item)
@@ -646,10 +646,10 @@ class _TrendingContentScrollerState extends State<TrendingContentScroller>
                               ),
                             ),
                             const SizedBox(height: 4),
-                            // Overview for TMDB content (truncated)
+                            // Overview for TMDB content (truncated) - Fixed height
                             if (item.platform == ContentType.tmdb && item.description.isNotEmpty)
-                              Expanded(
-                                flex: 3,
+                              SizedBox(
+                                height: 24,
                                 child: Text(
                                   item.description,
                                   style: TextStyle(
@@ -662,7 +662,8 @@ class _TrendingContentScrollerState extends State<TrendingContentScroller>
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                            const SizedBox(height: 8),
+                            const Spacer(),
+                            // Bottom bar - Fixed at bottom
                             Row(
                               children: [
                                 Expanded(

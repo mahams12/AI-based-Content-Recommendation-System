@@ -1,11 +1,13 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/content_model.dart';
+import 'firebase_sync_service.dart';
 
 class HistoryService {
   static const String _historyBoxName = 'user_history';
   static const int _maxHistoryItems = 100;
   
   late Box<Map> _historyBox;
+  final FirebaseSyncService _firebaseSync = FirebaseSyncService();
 
   Future<void> init() async {
     _historyBox = await Hive.openBox<Map>(_historyBoxName);
@@ -31,8 +33,11 @@ class HistoryService {
       // Remove if already exists to avoid duplicates
       await removeFromHistory(item.id);
       
-      // Add to beginning of list
+      // Add to beginning of list (local storage)
       await _historyBox.put(item.id, historyItem);
+      
+      // Sync to Firebase if user is signed in
+      await _firebaseSync.syncHistoryToFirebase(item);
       
       // Limit history size
       await _limitHistorySize();
@@ -44,6 +49,8 @@ class HistoryService {
   Future<void> removeFromHistory(String itemId) async {
     try {
       await _historyBox.delete(itemId);
+      // Also remove from Firebase
+      await _firebaseSync.removeHistoryFromFirebase(itemId);
     } catch (e) {
       print('Error removing from history: $e');
     }
@@ -52,6 +59,8 @@ class HistoryService {
   Future<void> clearAllHistory() async {
     try {
       await _historyBox.clear();
+      // Also clear from Firebase
+      await _firebaseSync.clearHistoryFromFirebase();
     } catch (e) {
       print('Error clearing history: $e');
     }
@@ -59,19 +68,64 @@ class HistoryService {
 
   Future<List<ContentItem>> getHistory() async {
     try {
-      final historyItems = _historyBox.values.toList();
+      List<ContentItem> history = [];
       
-      // Sort by timestamp (most recent first)
-      historyItems.sort((a, b) {
-        final timestampA = a['timestamp'] as int? ?? 0;
-        final timestampB = b['timestamp'] as int? ?? 0;
-        return timestampB.compareTo(timestampA);
-      });
+      // If user is signed in, get from Firebase first (for cross-device sync)
+      if (_firebaseSync.isSignedIn) {
+        final firebaseHistory = await _firebaseSync.getHistoryFromFirebase();
+        if (firebaseHistory.isNotEmpty) {
+          // Merge Firebase history with local history
+          history = firebaseHistory;
+          // Also sync Firebase history to local storage
+          for (final item in firebaseHistory) {
+            final historyItem = {
+              'id': item.id,
+              'title': item.title,
+              'description': item.description,
+              'thumbnailUrl': item.thumbnailUrl,
+              'platform': item.platform.name,
+              'channelName': item.channelName,
+              'artistName': item.artistName,
+              'duration': item.duration,
+              'viewCount': item.viewCount,
+              'publishedAt': item.publishedAt?.millisecondsSinceEpoch,
+              'category': item.category.name,
+              'timestamp': DateTime.now().millisecondsSinceEpoch,
+            };
+            await _historyBox.put(item.id, historyItem);
+          }
+        }
+      }
+      
+      // If no Firebase history or user not signed in, use local history
+      if (history.isEmpty) {
+        final historyItems = _historyBox.values.toList();
+        
+        // Sort by timestamp (most recent first)
+        historyItems.sort((a, b) {
+          final timestampA = a['timestamp'] as int? ?? 0;
+          final timestampB = b['timestamp'] as int? ?? 0;
+          return timestampB.compareTo(timestampA);
+        });
 
-      return historyItems.map((item) => _mapToContentItem(item)).toList();
+        history = historyItems.map((item) => _mapToContentItem(item)).toList();
+      }
+
+      return history;
     } catch (e) {
       print('Error getting history: $e');
-      return [];
+      // Fallback to local history on error
+      try {
+        final historyItems = _historyBox.values.toList();
+        historyItems.sort((a, b) {
+          final timestampA = a['timestamp'] as int? ?? 0;
+          final timestampB = b['timestamp'] as int? ?? 0;
+          return timestampB.compareTo(timestampA);
+        });
+        return historyItems.map((item) => _mapToContentItem(item)).toList();
+      } catch (e2) {
+        return [];
+      }
     }
   }
 

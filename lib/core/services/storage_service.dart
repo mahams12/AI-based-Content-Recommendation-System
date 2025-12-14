@@ -120,8 +120,9 @@ class StorageService {
       return null;
     }
     
+    if (contentJson == null) return null;
+    
     try {
-      if (contentJson == null) return null;
       final List<dynamic> contentList = jsonDecode(contentJson);
       return contentList.map((json) => ContentItemJson.fromJson(json)).toList();
     } catch (e) {
@@ -152,9 +153,10 @@ class StorageService {
       preferencesJson = _userBox.get('preferences');
     }
     
+    if (preferencesJson == null) return null;
+    
     try {
-      if (preferencesJson == null) return null;
-      return jsonDecode(preferencesJson);
+      return jsonDecode(preferencesJson) as Map<String, dynamic>;
     } catch (e) {
       return null;
     }
@@ -291,9 +293,10 @@ class StorageService {
       settingsJson = _userBox.get('app_settings');
     }
     
+    if (settingsJson == null) return null;
+    
     try {
-      if (settingsJson == null) return null;
-      return jsonDecode(settingsJson);
+      return jsonDecode(settingsJson) as Map<String, dynamic>;
     } catch (e) {
       return null;
     }

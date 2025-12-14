@@ -1,10 +1,12 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/content_model.dart';
+import 'firebase_sync_service.dart';
 
 class FavoritesService {
   static const String _favoritesBoxName = 'user_favorites';
   
   late Box<Map> _favoritesBox;
+  final FirebaseSyncService _firebaseSync = FirebaseSyncService();
 
   Future<void> init() async {
     _favoritesBox = await Hive.openBox<Map>(_favoritesBoxName);
@@ -27,7 +29,11 @@ class FavoritesService {
         'addedAt': DateTime.now().millisecondsSinceEpoch,
       };
 
+      // Save locally
       await _favoritesBox.put(item.id, favoriteItem);
+      
+      // Sync to Firebase if user is signed in
+      await _firebaseSync.syncFavoriteToFirebase(item);
     } catch (e) {
       print('Error adding to favorites: $e');
     }
@@ -36,6 +42,8 @@ class FavoritesService {
   Future<void> removeFromFavorites(String itemId) async {
     try {
       await _favoritesBox.delete(itemId);
+      // Also remove from Firebase
+      await _firebaseSync.removeFavoriteFromFirebase(itemId);
     } catch (e) {
       print('Error removing from favorites: $e');
     }
@@ -52,25 +60,71 @@ class FavoritesService {
 
   Future<List<ContentItem>> getFavorites() async {
     try {
-      final favoriteItems = _favoritesBox.values.toList();
+      List<ContentItem> favorites = [];
       
-      // Sort by added date (most recent first)
-      favoriteItems.sort((a, b) {
-        final addedAtA = a['addedAt'] as int? ?? 0;
-        final addedAtB = b['addedAt'] as int? ?? 0;
-        return addedAtB.compareTo(addedAtA);
-      });
+      // If user is signed in, get from Firebase first (for cross-device sync)
+      if (_firebaseSync.isSignedIn) {
+        final firebaseFavorites = await _firebaseSync.getFavoritesFromFirebase();
+        if (firebaseFavorites.isNotEmpty) {
+          favorites = firebaseFavorites;
+          // Also sync Firebase favorites to local storage
+          for (final item in firebaseFavorites) {
+            final favoriteItem = {
+              'id': item.id,
+              'title': item.title,
+              'description': item.description,
+              'thumbnailUrl': item.thumbnailUrl,
+              'platform': item.platform.name,
+              'channelName': item.channelName,
+              'artistName': item.artistName,
+              'duration': item.duration,
+              'viewCount': item.viewCount,
+              'publishedAt': item.publishedAt?.millisecondsSinceEpoch,
+              'category': item.category.name,
+              'addedAt': DateTime.now().millisecondsSinceEpoch,
+            };
+            await _favoritesBox.put(item.id, favoriteItem);
+          }
+        }
+      }
+      
+      // If no Firebase favorites or user not signed in, use local favorites
+      if (favorites.isEmpty) {
+        final favoriteItems = _favoritesBox.values.toList();
+        
+        // Sort by added date (most recent first)
+        favoriteItems.sort((a, b) {
+          final addedAtA = a['addedAt'] as int? ?? 0;
+          final addedAtB = b['addedAt'] as int? ?? 0;
+          return addedAtB.compareTo(addedAtA);
+        });
 
-      return favoriteItems.map((item) => _mapToContentItem(item)).toList();
+        favorites = favoriteItems.map((item) => _mapToContentItem(item)).toList();
+      }
+
+      return favorites;
     } catch (e) {
       print('Error getting favorites: $e');
-      return [];
+      // Fallback to local favorites on error
+      try {
+        final favoriteItems = _favoritesBox.values.toList();
+        favoriteItems.sort((a, b) {
+          final addedAtA = a['addedAt'] as int? ?? 0;
+          final addedAtB = b['addedAt'] as int? ?? 0;
+          return addedAtB.compareTo(addedAtA);
+        });
+        return favoriteItems.map((item) => _mapToContentItem(item)).toList();
+      } catch (e2) {
+        return [];
+      }
     }
   }
 
   Future<void> clearAllFavorites() async {
     try {
       await _favoritesBox.clear();
+      // Also clear from Firebase
+      await _firebaseSync.clearFavoritesFromFirebase();
     } catch (e) {
       print('Error clearing favorites: $e');
     }

@@ -59,30 +59,68 @@
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   
-  <!-- Google Sign-In Configuration -->
+  <!-- Google Sign-In Configuration - FedCM Completely Disabled -->
   <script>
-    // Configure Google Identity Services to avoid FedCM issues
-    window.googleSignInConfig = {
-      client_id: '597878741733-94oh71atkf557uqhrveuaocgcaanacmc.apps.googleusercontent.com',
-      callback: function(response) {
-        console.log('Google Sign-In callback:', response);
-      },
-      auto_select: false,
-      cancel_on_tap_outside: true,
-      use_fedcm_for_prompt: false, // Disable FedCM to avoid network errors
-      ux_mode: 'popup' // Use popup mode instead of redirect
+    // Suppress deprecation warnings (expected for mobile-first app)
+    const originalWarn = console.warn;
+    console.warn = function(...args) {
+      // Suppress google_sign_in deprecation warnings (expected)
+      const message = args.join(' ');
+      if (message.includes('signIn') && message.includes('deprecated') && message.includes('web')) {
+        // Suppress - this is expected for mobile-first apps
+        return;
+      }
+      if (message.includes('renderButton')) {
+        // Suppress - we know about this, it's for mobile app
+        return;
+      }
+      // Show other warnings
+      originalWarn.apply(console, args);
     };
     
-    // Initialize Google Identity Services with FedCM disabled
+    // Completely disable FedCM to avoid CORS and network errors
+    // This ensures traditional popup flow is used instead
     window.addEventListener('load', function() {
-      if (window.google && window.google.accounts) {
-        window.google.accounts.id.initialize({
-          client_id: '597878741733-94oh71atkf557uqhrveuaocgcaanacmc.apps.googleusercontent.com',
-          use_fedcm_for_prompt: false,
-          ux_mode: 'popup'
-        });
+      // Wait for Google Identity Services to load
+      function initializeGoogleSignIn() {
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+          try {
+            window.google.accounts.id.initialize({
+              client_id: '597878741733-94oh71atkf557uqhrveuaocgcaanacmc.apps.googleusercontent.com',
+              use_fedcm_for_prompt: false, // Explicitly disable FedCM
+              ux_mode: 'popup', // Use popup mode
+              auto_select: false,
+              cancel_on_tap_outside: true,
+              callback: function(response) {
+                console.log('Google Sign-In callback:', response);
+              }
+            });
+            console.log('Google Identity Services initialized with FedCM disabled');
+          } catch (e) {
+            console.error('Error initializing Google Identity Services:', e);
+          }
+        } else {
+          // Retry after a short delay if not loaded yet
+          setTimeout(initializeGoogleSignIn, 100);
+        }
       }
+      
+      // Start initialization
+      initializeGoogleSignIn();
     });
+    
+    // Disable FedCM globally if possible
+    if (navigator.credentials && navigator.credentials.get) {
+      const originalGet = navigator.credentials.get;
+      navigator.credentials.get = function(options) {
+        // Prevent FedCM from being used
+        if (options && options.federated) {
+          // Suppress FedCM logs
+          return Promise.reject(new Error('FedCM disabled'));
+        }
+        return originalGet.call(this, options);
+      };
+    }
   </script>
   
   <!-- Firebase SDK -->

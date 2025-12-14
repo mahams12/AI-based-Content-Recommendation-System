@@ -14,27 +14,11 @@ class MusicRecommendationsScreen extends StatefulWidget {
 class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
-  late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
 
   final ApiService _apiService = ApiService();
   List<ContentItem> _musicContent = [];
   bool _isLoading = false;
-  String _selectedGenre = 'Pop';
-
-  final List<String> genres = [
-    'Pop',
-    'Rock',
-    'Hip-Hop',
-    'Electronic',
-    'Jazz',
-    'Classical',
-    'Country',
-    'R&B',
-    'Reggae',
-    'Blues',
-  ];
 
   @override
   void initState() {
@@ -42,11 +26,6 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
     
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
 
@@ -58,48 +37,36 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
       curve: Curves.easeOut,
     ));
     
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-    
     _fadeController.forward();
-    _slideController.forward();
-    _loadMusicContent();
+    _loadTrendingMusic();
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
-    _slideController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadMusicContent() async {
+  Future<void> _loadTrendingMusic() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final result = await _apiService.searchSpotifyContent(
-        query: _selectedGenre.toLowerCase(),
-        type: 'track',
-        limit: 50,
-      );
-
+      // Load only trending music
+      final result = await _apiService.getTrendingContent(maxResultsPerPlatform: 200);
       if (result.isSuccess && result.data != null) {
         setState(() {
-          _musicContent = result.data!;
+          _musicContent = result.data!
+              .where((item) => item.platform == ContentType.spotify)
+              .toList();
         });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading music content: $e'),
+            content: Text('Error loading trending music: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -112,38 +79,30 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
   }
 
   void _openContent(ContentItem item) {
-    showDialog(
-      context: context,
-      builder: (context) => MediaPlayer(content: item),
-    );
-  }
-
-  IconData _getGenreIcon(String genre) {
-    switch (genre) {
-      case 'Pop':
-        return Icons.music_note;
-      case 'Rock':
-        return Icons.electric_bolt;
-      case 'Hip-Hop':
-        return Icons.mic;
-      case 'Electronic':
-        return Icons.headphones;
-      case 'Jazz':
-        return Icons.piano;
-      case 'Classical':
-        return Icons.queue_music;
-      case 'Country':
-        return Icons.agriculture;
-      case 'R&B':
-        return Icons.favorite;
-      case 'Reggae':
-        return Icons.waves;
-      case 'Blues':
-        return Icons.mood;
-      default:
-        return Icons.music_note;
+    try {
+      print('🎵 Opening content: ${item.title} (${item.platform.name})');
+      print('🔗 External URL: ${item.externalUrl}');
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierColor: Colors.black54,
+        builder: (BuildContext dialogContext) => MediaPlayer(content: item),
+      );
+    } catch (e, stackTrace) {
+      print('❌ Error showing dialog: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening content: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -158,113 +117,16 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
                 physics: const BouncingScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(child: _buildAppBar()),
-                  SliverToBoxAdapter(
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGenreFilter(),
-                    ),
-                  ),
                   SliverToBoxAdapter(child: _buildMusicGrid()),
                 ],
               ),
             ),
           ),
-          
-          // Coming Soon Overlay
-          _buildComingSoonOverlay(),
         ],
       ),
     );
   }
 
-  Widget _buildComingSoonOverlay() {
-    return Positioned.fill(
-      child: Container(
-        color: Colors.black.withOpacity(0.9),
-        child: Center(
-          child: Container(
-            margin: const EdgeInsets.all(40),
-            padding: const EdgeInsets.all(40),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1DB954), Color(0xFF1ED760)],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1DB954).withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  child: const Icon(
-                    Icons.music_note,
-                    color: Colors.white,
-                    size: 60,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Coming Soon',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Music Recommendations Tab',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Get ready for personalized music recommendations powered by AI. Discover your next favorite songs!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 16,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: const Text(
-                    '🎵 AI-Powered Music Discovery',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildAppBar() {
     return Container(
@@ -306,7 +168,7 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Discover your next favorite song',
+                  'Trending Music',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[400],
@@ -335,72 +197,6 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
     );
   }
 
-  Widget _buildGenreFilter() {
-    return Container(
-      height: 60,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: genres.length,
-        itemBuilder: (context, index) {
-          final genre = genres[index];
-          final isSelected = _selectedGenre == genre;
-          
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedGenre = genre;
-              });
-              _loadMusicContent();
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(
-                gradient: isSelected
-                    ? const LinearGradient(
-                        colors: [Color(0xFF1DB954), Color(0xFF1ED760)],
-                      )
-                    : null,
-                color: isSelected ? null : const Color(0xFF1C2128),
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFF1DB954).withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _getGenreIcon(genre),
-                    size: 18,
-                    color: isSelected ? Colors.white : Colors.grey[400],
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    genre,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.grey[400],
-                      fontSize: 15,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   Widget _buildMusicGrid() {
     if (_isLoading) {
@@ -472,7 +268,7 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Try selecting a different genre',
+                'No trending music available',
                 style: TextStyle(
                   color: Colors.grey[500],
                   fontSize: 14,
@@ -556,46 +352,57 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Song Title
-                  Text(
-                    content.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.2,
+                  // Song Title - Fixed height
+                  SizedBox(
+                    height: 20,
+                    child: Text(
+                      content.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   
-                  // Artist
-                  Text(
-                    content.artistName ?? 'Unknown Artist',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 14,
-                      letterSpacing: -0.1,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  
-                  // Album
-                  if (content.albumName != null)
-                    Text(
-                      content.albumName!,
+                  // Artist - Fixed height
+                  SizedBox(
+                    height: 18,
+                    child: Text(
+                      content.artistName ?? 'Unknown Artist',
                       style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 12,
+                        color: Colors.grey[400],
+                        fontSize: 14,
                         letterSpacing: -0.1,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                  ),
+                  
+                  // Album - Fixed height (only if exists)
+                  if (content.albumName != null) ...[
+                    const SizedBox(height: 2),
+                    SizedBox(
+                      height: 16,
+                      child: Text(
+                        content.albumName!,
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 12,
+                          letterSpacing: -0.1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

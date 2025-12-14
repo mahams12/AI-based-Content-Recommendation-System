@@ -20,6 +20,9 @@ import 'features/music/presentation/pages/music_recommendations_screen.dart';
 import 'features/movies/presentation/pages/movies_recommendations_screen.dart';
 import 'core/services/api_service.dart';
 import 'core/services/storage_service.dart';
+import 'core/services/history_service.dart';
+import 'core/services/favorites_service.dart';
+import 'core/services/firebase_sync_service.dart';
 import 'core/models/content_model.dart';
 
 void main() async {
@@ -40,12 +43,63 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  final HistoryService _historyService = HistoryService();
+  final FavoritesService _favoritesService = FavoritesService();
+  final FirebaseSyncService _firebaseSync = FirebaseSyncService();
+  bool _servicesInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeServices();
+  }
+
+  Future<void> _initializeServices() async {
+    await _historyService.init();
+    await _favoritesService.init();
+    setState(() {
+      _servicesInitialized = true;
+    });
+  }
+
+  Future<void> _syncOnSignIn() async {
+    if (!_firebaseSync.isSignedIn || !_servicesInitialized) return;
+    
+    try {
+      // Sync local history to Firebase
+      final localHistory = await _historyService.getHistory();
+      if (localHistory.isNotEmpty) {
+        await _firebaseSync.syncLocalHistoryToFirebase(localHistory);
+      }
+      
+      // Sync local favorites to Firebase
+      final localFavorites = await _favoritesService.getFavorites();
+      if (localFavorites.isNotEmpty) {
+        await _firebaseSync.syncLocalFavoritesToFirebase(localFavorites);
+      }
+    } catch (e) {
+      print('Error syncing on sign-in: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    
+    // Sync when user signs in
+    authState.whenData((user) {
+      if (user != null && _servicesInitialized) {
+        _syncOnSignIn();
+      }
+    });
     
     return MaterialApp(
       title: AppConstants.appName,

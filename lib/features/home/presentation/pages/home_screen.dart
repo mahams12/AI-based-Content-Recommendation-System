@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/models/content_model.dart';
 import '../../../../core/widgets/media_player.dart';
 import '../../../../core/widgets/safe_network_image.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../widgets/trending_content_scroller.dart';
+import '../../../welcome/presentation/pages/welcome_screen.dart';
+import '../../../welcome/presentation/pages/simple_voice_welcome_screen.dart';
+import '../../../recommendations/presentation/pages/mood_based_recommendations_screen.dart';
 
 
 // Main Home Screen
@@ -28,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<ContentItem> _trendingContent = [];
   List<ContentItem> _categoryContent = [];
   bool _isLoadingCategory = false;
-  bool _showApiWarning = false;
   
 
   @override
@@ -76,25 +80,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
 
 
-  // Check API status and show warning if needed
-  void _checkApiStatus() {
-    setState(() {
-      _showApiWarning = ApiService.isYouTubeApiFailing;
-    });
-  }
 
   // Load trending content for the trending section (top 3 cards)
   Future<void> _loadTrendingContent() async {
     if (!mounted) return;
     
     try {
-      final result = await _apiService.getTrendingContent(maxResultsPerPlatform: 5);
+      // Fetch maximum trending content
+      final result = await _apiService.getTrendingContent(maxResultsPerPlatform: 20);
       if (!mounted) return;
       
       if (result.isSuccess && result.data != null) {
         setState(() {
           _trendingContent = result.data!;
-          _showApiWarning = ApiService.isYouTubeApiFailing;
         });
       }
     } catch (e) {
@@ -114,26 +112,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       List<ContentItem> content = [];
       
       if (selectedCategory == 'All') {
-        // Use getAllContent for general browsing (not just trending)
-        final result = await _apiService.getAllContent(maxResults: 50);
+        // Use getAllContent for general browsing (not just trending) - fetch maximum
+        final result = await _apiService.getAllContent(maxResults: 200);
         if (result.isSuccess && result.data != null) {
           content = result.data!;
         }
       } else if (selectedCategory == 'YouTube Videos') {
-        // Get diverse YouTube content (not just trending)
-        final result = await _apiService.getAllContent(platform: ContentType.youtube, maxResults: 50);
+        // Get diverse YouTube content (not just trending) - fetch maximum
+        final result = await _apiService.getAllContent(platform: ContentType.youtube, maxResults: 200);
         if (result.isSuccess && result.data != null) {
           content = result.data!;
         }
       } else if (selectedCategory == 'Movies') {
-        // Get popular movies and TV shows (not just trending)
-        final result = await _apiService.getAllContent(platform: ContentType.tmdb, maxResults: 50);
+        // Get popular movies and TV shows (not just trending) - fetch maximum
+        final result = await _apiService.getAllContent(platform: ContentType.tmdb, maxResults: 200);
         if (result.isSuccess && result.data != null) {
           content = result.data!;
         }
       } else if (selectedCategory == 'Songs') {
-        // Get diverse Spotify content (not just trending)
-        final result = await _apiService.getAllContent(platform: ContentType.spotify, maxResults: 50);
+        // Get diverse Spotify content (not just trending) - fetch maximum
+        final result = await _apiService.getAllContent(platform: ContentType.spotify, maxResults: 200);
         if (result.isSuccess && result.data != null) {
           content = result.data!;
         }
@@ -143,7 +141,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       setState(() {
         _categoryContent = content;
         _isLoadingCategory = false;
-        _showApiWarning = ApiService.isYouTubeApiFailing;
       });
     } catch (e) {
       if (!mounted) return;
@@ -242,13 +239,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 physics: const BouncingScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(child: _buildAppBar()),
-                  if (_showApiWarning) SliverToBoxAdapter(child: _buildApiWarningBanner()),
                   SliverToBoxAdapter(
                     child: SlideTransition(
                       position: _slideAnimation,
                       child: _buildTrendingSection(),
                     ),
                   ),
+                  SliverToBoxAdapter(child: _buildExperienceChoiceSection()),
                   SliverToBoxAdapter(child: _buildCategoryFilter()),
                   SliverToBoxAdapter(child: _buildContentSections()),
                 ],
@@ -335,36 +332,78 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(height: 24),
-          // Three trending categories in a row
-          Row(
-            children: [
-              Expanded(
-                child: _buildTrendingCategory(
-                  'YouTube',
-                  Icons.play_arrow_rounded,
-                  const Color(0xFFFF4444),
-                  _trendingContent.where((item) => item.platform == ContentType.youtube).toList(),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTrendingCategory(
-                  'Movies',
-                  Icons.movie_rounded,
-                  const Color(0xFF667eea),
-                  _trendingContent.where((item) => item.platform == ContentType.tmdb).toList(),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTrendingCategory(
-                  'Songs',
-                  Icons.music_note_rounded,
-                  const Color(0xFF1DB954),
-                  _trendingContent.where((item) => item.platform == ContentType.spotify).toList(),
-                ),
-              ),
-            ],
+          // Three trending categories in a row - only show if they have content
+          Builder(
+            builder: (context) {
+              final youtubeItems = _trendingContent.where((item) => item.platform == ContentType.youtube).toList();
+              final movieItems = _trendingContent.where((item) => item.platform == ContentType.tmdb).toList();
+              final songItems = _trendingContent.where((item) => item.platform == ContentType.spotify).toList();
+              
+              final categories = <Widget>[];
+              
+              if (youtubeItems.isNotEmpty) {
+                categories.add(
+                  Expanded(
+                    child: _buildTrendingCategory(
+                      'YouTube',
+                      Icons.play_arrow_rounded,
+                      const Color(0xFFFF4444),
+                      youtubeItems,
+                    ),
+                  ),
+                );
+                if (movieItems.isNotEmpty || songItems.isNotEmpty) {
+                  categories.add(const SizedBox(width: 12));
+                }
+              }
+              
+              if (movieItems.isNotEmpty) {
+                categories.add(
+                  Expanded(
+                    child: _buildTrendingCategory(
+                      'Movies',
+                      Icons.movie_rounded,
+                      const Color(0xFF667eea),
+                      movieItems,
+                    ),
+                  ),
+                );
+                if (songItems.isNotEmpty) {
+                  categories.add(const SizedBox(width: 12));
+                }
+              }
+              
+              if (songItems.isNotEmpty) {
+                categories.add(
+                  Expanded(
+                    child: _buildTrendingCategory(
+                      'Songs',
+                      Icons.music_note_rounded,
+                      const Color(0xFF1DB954),
+                      songItems,
+                    ),
+                  ),
+                );
+              }
+              
+              // If no categories have content, show a message
+              if (categories.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(20),
+                  child: Center(
+                    child: Text(
+                      'Loading trending content...',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              
+              return Row(children: categories);
+            },
           ),
         ],
       ),
@@ -373,18 +412,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildTrendingCategory(String title, IconData icon, Color color, List<ContentItem> items) {
     ContentType platform;
-    switch (title.toLowerCase()) {
-      case 'youtube':
-        platform = ContentType.youtube;
-        break;
-      case 'movies':
-        platform = ContentType.tmdb;
-        break;
-      case 'songs':
-        platform = ContentType.spotify;
-        break;
-      default:
-        platform = ContentType.youtube;
+    final titleLower = title.toLowerCase();
+    if (titleLower.contains('youtube') || titleLower.contains('video')) {
+      platform = ContentType.youtube;
+    } else if (titleLower.contains('movie') || titleLower.contains('tv')) {
+      platform = ContentType.tmdb;
+    } else if (titleLower.contains('song') || titleLower.contains('music')) {
+      platform = ContentType.spotify;
+    } else {
+      platform = ContentType.youtube;
     }
 
     return GestureDetector(
@@ -582,6 +618,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ),
             ),
+<<<<<<< HEAD
             const SizedBox(height: 10),
             // See All Button - replaces the number display
             Center(
@@ -635,6 +672,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
+=======
+>>>>>>> e0288a4 (fixes)
           ],
         ),
       ),
@@ -825,6 +864,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
+<<<<<<< HEAD
                 GestureDetector(
                   onTap: () {
                     _showAllCategoryContent(title, items);
@@ -859,6 +899,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
+=======
+>>>>>>> e0288a4 (fixes)
               ],
             ),
           ),
@@ -878,32 +920,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showAllCategoryContent(String title, List<ContentItem> items) {
-    ContentType platform;
-    IconData icon;
-    Color color;
-
-    // Determine platform, icon, and color based on title
-    if (title.contains('YouTube')) {
-      platform = ContentType.youtube;
-      icon = Icons.play_arrow_rounded;
-      color = const Color(0xFFFF4444);
-    } else if (title.contains('Movie') || title.contains('TV')) {
-      platform = ContentType.tmdb;
-      icon = Icons.movie_rounded;
-      color = const Color(0xFF667eea);
-    } else if (title.contains('Song') || title.contains('Music')) {
-      platform = ContentType.spotify;
-      icon = Icons.music_note_rounded;
-      color = const Color(0xFF1DB954);
-    } else {
-      platform = ContentType.youtube;
-      icon = Icons.explore_rounded;
-      color = const Color(0xFF667eea);
-    }
-
-    _openTrendingContentScroller(title, platform, icon, color, items);
-  }
 
   Widget _buildEnhancedContentCard(ContentItem item) {
     final colors = _getGradientColors(item);
@@ -1245,6 +1261,278 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  // Build Experience Choice Section
+  Widget _buildExperienceChoiceSection() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Title
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 24,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: AppTheme.primaryGradient,
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Choose Your Experience',
+                style: GoogleFonts.inter(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          // Chat Interface Card
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const WelcomeScreen(),
+                    ),
+                  );
+                },
+                onTapDown: (_) {
+                  // Visual feedback handled by Material
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: AppTheme.primaryGradient,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.chat_bubble_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Chat Interface',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Type or select responses to questions',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // Voice Interface Card
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SimpleVoiceWelcomeScreen(),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.mic_rounded,
+                          color: AppTheme.accentColor,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Voice Interface',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Speak your responses naturally',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: Colors.white.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white.withOpacity(0.7),
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // Mood-Based Recommendations Card
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const MoodBasedRecommendationsScreen(),
+                    ),
+                  );
+                },
+                splashColor: const Color(0xFF8B5CF6).withOpacity(0.3),
+                highlightColor: const Color(0xFF8B5CF6).withOpacity(0.1),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B5CF6).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.mood_rounded,
+                          color: Color(0xFF8B5CF6),
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mood-Based Recommendations',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Get content based on your mood',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: Colors.white.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white.withOpacity(0.7),
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _getTMDBSubtitle(ContentItem item) {
     // Get genre names from metadata
     if (item.metadata != null && item.metadata!['genre_ids'] != null) {
@@ -1275,57 +1563,4 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return item.category.toString().split('.').last.replaceAll(RegExp(r'([A-Z])'), ' \$1').trim();
   }
 
-  // Build API warning banner
-  Widget _buildApiWarningBanner() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.warning_rounded,
-            color: Colors.orange,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'YouTube API quota exceeded. Showing demo content.',
-              style: TextStyle(
-                color: Colors.orange,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              ApiService.resetYouTubeApiFailure();
-              _checkApiStatus();
-              _loadTrendingContent();
-              _loadCategoryContent();
-            },
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              'Retry',
-              style: TextStyle(
-                color: Colors.orange,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

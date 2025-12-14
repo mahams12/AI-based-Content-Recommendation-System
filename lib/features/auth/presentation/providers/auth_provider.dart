@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -17,6 +18,8 @@ class AuthService {
     // OAuth client ID from Google Cloud Console
     clientId: '597878741733-94oh71atkf557uqhrveuaocgcaanacmc.apps.googleusercontent.com',
     scopes: ['openid', 'email', 'profile'],
+    // For web: Disable FedCM to avoid CORS errors
+    // For mobile: This is ignored and native SDK is used
   );
 
   // Get current user
@@ -84,29 +87,76 @@ class AuthService {
     }
   }
 
-  // Sign in with Google (Updated for FedCM compatibility)
+  // Sign in with Google - Optimized for mobile reliability
   Future<UserCredential?> signInWithGoogle() async {
     try {
       print('Starting Google Sign-In process...');
       
-      // Always sign out first to ensure clean state
-      try {
-        await _googleSignIn.signOut();
-        print('Signed out from previous session');
-      } catch (e) {
-        print('Sign out error (ignoring): $e');
-      }
-
       GoogleSignInAccount? googleUser;
       
-      if (kIsWeb) {
-        // For web, use direct interactive sign-in to avoid FedCM issues
-        print('Using direct interactive sign-in for web...');
-        googleUser = await _googleSignIn.signIn();
-      } else {
-        // For mobile, use interactive sign-in directly
-        print('Attempting interactive sign-in for mobile...');
-        googleUser = await _googleSignIn.signIn();
+      // Step 1: Try silent sign-in first (works for both web and mobile)
+      // This is the most reliable method and doesn't require user interaction
+      try {
+        print('Attempting silent sign-in...');
+        googleUser = await _googleSignIn.signInSilently();
+        if (googleUser != null) {
+          print('✅ Silent sign-in successful, user: ${googleUser.email}');
+        } else {
+          print('Silent sign-in returned null, will try interactive sign-in');
+        }
+      } catch (e) {
+        // Silent sign-in failure is expected if user hasn't signed in before
+        print('Silent sign-in not available (expected for first-time users): $e');
+      }
+
+      // Step 2: If silent sign-in didn't work, use interactive sign-in
+      if (googleUser == null) {
+        // Clear any existing sign-in state to ensure clean authentication
+        try {
+          final GoogleSignInAccount? currentUser = _googleSignIn.currentUser;
+          if (currentUser != null) {
+            print('Clearing previous sign-in session...');
+            await _googleSignIn.signOut();
+            // Small delay to ensure sign-out completes
+            await Future.delayed(const Duration(milliseconds: 300));
+          }
+        } catch (e) {
+          // Ignore sign-out errors, continue with sign-in
+          print('Sign-out error (ignoring): $e');
+        }
+
+        if (kIsWeb) {
+          // For web, use interactive sign-in directly
+          // Note: This app is optimized for mobile - web support is secondary
+          print('Using interactive sign-in for web...');
+          print('⚠️ Note: This app is optimized for mobile devices.');
+          googleUser = await _googleSignIn.signIn();
+        } else {
+          // For mobile, use interactive sign-in with timeout protection
+          print('Attempting interactive sign-in for mobile...');
+          try {
+            googleUser = await _googleSignIn.signIn().timeout(
+              const Duration(seconds: 60),
+              onTimeout: () {
+                throw TimeoutException('Sign-in timed out. Please try again.');
+              },
+            );
+          } on TimeoutException catch (e) {
+            print('Sign-in timeout: $e');
+            throw 'Sign-in took too long. Please check your internet connection and try again.';
+          } catch (e) {
+            // Check for Google Play Services errors
+            final errorStr = e.toString().toLowerCase();
+            if (errorStr.contains('play services') || 
+                errorStr.contains('gms') || 
+                errorStr.contains('unavailable') ||
+                errorStr.contains('sign_in_required_activity')) {
+              print('❌ Google Play Services error: $e');
+              throw 'Google Play Services is required for Google Sign-In. Please use a Google Play Services enabled emulator or test on a real device.';
+            }
+            rethrow;
+          }
+        }
       }
       
       if (googleUser == null) {
@@ -114,7 +164,7 @@ class AuthService {
         return null; // Return null instead of throwing for user cancellation
       }
       
-      print('Google Sign-In successful, user: ${googleUser.email}');
+      print('✅ Google Sign-In successful, user: ${googleUser.email}');
       return await _processGoogleUser(googleUser);
       
     } on FirebaseAuthException catch (e) {
@@ -141,28 +191,44 @@ class AuthService {
       print('Google Sign-In Error: $e');
       print('Error type: ${e.runtimeType}');
       
+      final errorString = e.toString().toLowerCase();
+      
+      // Handle Google Play Services errors (common on emulators)
+      if (errorString.contains('play services') || 
+          errorString.contains('gms') || 
+          errorString.contains('sign_in_required_activity') ||
+          errorString.contains('unavailable')) {
+        throw '⚠️ Google Play Services Required\n\n'
+            'Google Sign-In requires Google Play Services.\n\n'
+            'If using an emulator:\n'
+            '• Use a Google Play Services enabled emulator image\n'
+            '• Or test on a real Android device\n\n'
+            'On a real device:\n'
+            '• Make sure Google Play Services is installed and updated';
+      }
+      
       // Handle CORS errors
-      if (e.toString().contains('CORS') || e.toString().contains('ERR_FAILED')) {
+      if (errorString.contains('cors') || errorString.contains('err_failed')) {
         throw 'CORS error detected. Please check your Google Cloud Console configuration and ensure your domain is properly configured.';
       }
       
       // Handle FedCM errors
-      if (e.toString().contains('FedCM') || e.toString().contains('IdentityCredentialError')) {
+      if (errorString.contains('fedcm') || errorString.contains('identitycredentialerror')) {
         throw 'Authentication error. Please try refreshing the page and signing in again.';
       }
       
       // Handle popup closed errors
-      if (e.toString().contains('popup_closed')) {
+      if (errorString.contains('popup_closed')) {
         throw 'Google Sign-In popup was closed. Please try again.';
       }
       
       // Handle specific Google Sign-In errors
-      if (e.toString().contains('sign_in_failed')) {
+      if (errorString.contains('sign_in_failed')) {
         throw 'Google Sign-In failed. Please check your internet connection and try again.';
       }
       
       // Handle network errors
-      if (e.toString().contains('network') || e.toString().contains('timeout')) {
+      if (errorString.contains('network') || errorString.contains('timeout')) {
         throw 'Network error. Please check your internet connection and try again.';
       }
       

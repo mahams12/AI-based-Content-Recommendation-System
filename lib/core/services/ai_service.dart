@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:collection/collection.dart';
+import '../models/content_model.dart';
 
 /// AI Service for content recommendation and analysis
 class AIService {
@@ -472,6 +473,67 @@ class AIService {
     }
 
     return playlist;
+  }
+
+  /// Filter content by mood
+  Future<List<ContentItem>> filterContentByMood({
+    required List<ContentItem> content,
+    required String mood,
+    int maxResults = 20,
+  }) async {
+    if (mood == 'all' || mood == 'neutral') {
+      return content.take(maxResults).toList();
+    }
+
+    final scoredContent = <MapEntry<ContentItem, double>>[];
+
+    for (final item in content) {
+      final score = await _calculateMoodScoreForContent(item, mood);
+      if (score > 0.1) {
+        scoredContent.add(MapEntry(item, score));
+      }
+    }
+
+    // Sort by mood relevance score
+    scoredContent.sort((a, b) => b.value.compareTo(a.value));
+
+    return scoredContent
+        .take(maxResults)
+        .map((entry) => entry.key)
+        .toList();
+  }
+
+  /// Calculate mood relevance score for a content item
+  Future<double> _calculateMoodScoreForContent(ContentItem item, String mood) async {
+    final moodGenres = AIService.moodGenres[mood] ?? [];
+    double score = 0.0;
+
+    // Check genre match
+    for (final genre in item.genres) {
+      if (moodGenres.contains(genre)) {
+        score += 0.3;
+      }
+    }
+
+    // Check title/description sentiment
+    final titleSentiment = await analyzeSentiment(item.title);
+    final descSentiment = await analyzeSentiment(item.description);
+    
+    if (titleSentiment.mood == mood || descSentiment.mood == mood) {
+      score += 0.4;
+    }
+
+    // Boost popular content
+    if (item.viewCount != null && item.viewCount! > 100000) {
+      score += 0.1;
+    }
+
+    // Boost highly rated content
+    if (item.rating != null && item.rating! > 4.0) {
+      score += 0.2;
+    }
+
+    return score.clamp(0.0, 1.0);
   }
 
   /// Process user feedback to improve recommendations

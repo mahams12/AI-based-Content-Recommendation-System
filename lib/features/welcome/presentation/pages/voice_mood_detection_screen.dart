@@ -97,7 +97,28 @@ class _VoiceMoodDetectionScreenState extends ConsumerState<VoiceMoodDetectionScr
   Future<void> _initializeServices() async {
     setState(() => _isProcessing = true);
 
+<<<<<<< HEAD
     // Check microphone permission first
+=======
+    // Initialize voice mood service
+    print('🔄 Initializing voice mood detection service...');
+    final moodInitialized = await _moodService.initialize();
+    
+    if (!moodInitialized) {
+      print('❌ Voice mood service initialization failed');
+      if (mounted) {
+        setState(() {
+          _isInitialized = false;
+          _isProcessing = false;
+        });
+        _showError('Failed to initialize voice mood detection model. Please check console logs for details.');
+        // Don't navigate away - let user see the error
+        return;
+      }
+    }
+    
+    // Check microphone permission
+>>>>>>> e0288a4 (fixes)
     final hasPermission = await _recordingService.hasPermission();
     if (!hasPermission) {
       final granted = await _recordingService.requestPermission();
@@ -116,6 +137,7 @@ class _VoiceMoodDetectionScreenState extends ConsumerState<VoiceMoodDetectionScr
       _isProcessing = false;
     });
 
+<<<<<<< HEAD
     if (!moodInitialized && mounted) {
       _showError(
         'Failed to initialize voice mood detection model.\n\n'
@@ -134,6 +156,10 @@ class _VoiceMoodDetectionScreenState extends ConsumerState<VoiceMoodDetectionScr
           _isInitialized = true; // Allow UI to proceed, but mood detection will fail gracefully
         });
       }
+=======
+    if (moodInitialized) {
+      print('✅ Voice mood detection service initialized successfully');
+>>>>>>> e0288a4 (fixes)
     }
   }
 

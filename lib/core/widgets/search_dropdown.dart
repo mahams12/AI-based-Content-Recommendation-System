@@ -54,7 +54,7 @@ class _SearchDropdownState extends State<SearchDropdown> {
 
   void _onFocusChange() {
     setState(() {
-      _showDropdown = _focusNode.hasFocus;
+      _showDropdown = _focusNode.hasFocus && widget.query.isNotEmpty;
     });
   }
 
@@ -162,8 +162,14 @@ class _SearchDropdownState extends State<SearchDropdown> {
     return GestureDetector(
       onTap: () {
         // Close dropdown when tapping outside
-        _focusNode.unfocus();
+        if (_showDropdown) {
+          _focusNode.unfocus();
+          setState(() {
+            _showDropdown = false;
+          });
+        }
       },
+      behavior: HitTestBehavior.opaque,
       child: Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -201,16 +207,31 @@ class _SearchDropdownState extends State<SearchDropdown> {
                 color: Colors.white70,
                 size: 20,
               ),
-              suffixIcon: widget.isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF667eea),
+              suffixIcon: _showDropdown && widget.query.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white70,
+                        size: 20,
                       ),
+                      onPressed: () {
+                        _searchController.clear();
+                        _focusNode.unfocus();
+                        setState(() {
+                          _showDropdown = false;
+                        });
+                      },
                     )
-                  : null,
+                  : widget.isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF667eea),
+                          ),
+                        )
+                      : null,
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
