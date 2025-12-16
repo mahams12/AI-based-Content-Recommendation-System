@@ -80,41 +80,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final userCredential = await ref.read(authServiceProvider).signInWithGoogle();
-      
-      if (userCredential != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Welcome! Signed in with Google successfully.',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-            ),
-            backgroundColor: AppTheme.successColor,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e.toString(),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-            ),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -298,39 +263,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             ),
                           ),
                           
-                          const SizedBox(height: 16),
-                          
-                          // Divider
-                          Row(
-                            children: [
-                              const Expanded(child: Divider()),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Text(
-                                  'OR',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ),
-                              const Expanded(child: Divider()),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          // Google Sign In Button
-                          SizedBox(
-                            width: double.infinity,
-                            child: AnimatedButton(
-                              text: 'Continue with Google',
-                              onPressed: _isLoading ? null : _signInWithGoogle,
-                              backgroundColor: Colors.white,
-                              textColor: Colors.black87,
-                              icon: Icons.g_mobiledata,
-                              height: 50,
-                            ),
-                          ),
                         ],
                       ),
                     ),

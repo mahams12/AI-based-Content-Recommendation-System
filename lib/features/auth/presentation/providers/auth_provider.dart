@@ -124,16 +124,16 @@ class AuthService {
           // Ignore sign-out errors, continue with sign-in
           print('Sign-out error (ignoring): $e');
         }
-
-        if (kIsWeb) {
+      
+      if (kIsWeb) {
           // For web, use interactive sign-in directly
           // Note: This app is optimized for mobile - web support is secondary
           print('Using interactive sign-in for web...');
           print('⚠️ Note: This app is optimized for mobile devices.');
-          googleUser = await _googleSignIn.signIn();
-        } else {
+        googleUser = await _googleSignIn.signIn();
+      } else {
           // For mobile, use interactive sign-in with timeout protection
-          print('Attempting interactive sign-in for mobile...');
+        print('Attempting interactive sign-in for mobile...');
           try {
             googleUser = await _googleSignIn.signIn().timeout(
               const Duration(seconds: 60),
@@ -281,9 +281,62 @@ class AuthService {
   // Send password reset email
   Future<void> sendPasswordResetEmail(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      print('📧 Attempting to send password reset email to: $email');
+      
+      // First, check if user exists (this will help with debugging)
+      try {
+        final methods = await _auth.fetchSignInMethodsForEmail(email);
+        print('📋 Sign-in methods for $email: $methods');
+        
+        if (methods.isEmpty) {
+          throw 'No account found with this email address. Please sign up first or check your email.';
+        }
+      } catch (e) {
+        print('⚠️ Error checking user existence: $e');
+        // Continue anyway - Firebase will handle it
+      }
+      
+      // Simplified approach - let Firebase handle the email sending
+      // Remove action code settings to avoid potential issues
+      await _auth.sendPasswordResetEmail(
+        email: email,
+        // Removed actionCodeSettings to use default Firebase behavior
+      );
+      
+      print('✅ Password reset email sent successfully to: $email');
+      print('📬 Email should arrive within a few minutes. Check spam folder if not in inbox.');
+      
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      print('❌ Password reset Firebase error: ${e.code} - ${e.message}');
+      print('📚 Full error details: ${e.toString()}');
+      
+      // Provide specific error messages
+      if (e.code == 'user-not-found') {
+        throw 'No account found with this email address.\n\nPlease check:\n• Is this the correct email?\n• Have you signed up with this email?\n• Try signing up first if you don\'t have an account.';
+      } else if (e.code == 'invalid-email') {
+        throw 'Invalid email address. Please enter a valid email format (e.g., user@example.com).';
+      } else if (e.code == 'too-many-requests') {
+        throw 'Too many password reset requests.\n\nPlease wait 5-10 minutes before trying again.';
+      } else if (e.code == 'network-request-failed') {
+        throw 'Network error. Please check your internet connection and try again.';
+      } else if (e.code == 'missing-continue-uri') {
+        // This shouldn't happen with simplified approach, but handle it
+        throw 'Configuration error. Please contact support.';
+      }
+      
+      // Generic Firebase error
+      throw 'Firebase error: ${e.message ?? e.code}\n\nIf this persists, please check:\n1. Your email is correct\n2. You have an account with this email\n3. Your internet connection is working';
+      
+    } catch (e) {
+      print('❌ Unexpected error sending password reset: $e');
+      print('📚 Error type: ${e.runtimeType}');
+      
+      // If it's already a string error, rethrow it
+      if (e is String) {
+        throw e;
+      }
+      
+      throw 'Failed to send password reset email.\n\nError: $e\n\nPlease try:\n1. Check your email address\n2. Wait a few minutes and try again\n3. Check your spam folder\n4. Contact support if issue persists';
     }
   }
 

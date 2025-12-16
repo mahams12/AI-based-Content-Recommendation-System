@@ -62,61 +62,59 @@ class FavoritesService {
     try {
       List<ContentItem> favorites = [];
       
-      // If user is signed in, get from Firebase first (for cross-device sync)
-      if (_firebaseSync.isSignedIn) {
-        final firebaseFavorites = await _firebaseSync.getFavoritesFromFirebase();
-        if (firebaseFavorites.isNotEmpty) {
-          favorites = firebaseFavorites;
-          // Also sync Firebase favorites to local storage
-          for (final item in firebaseFavorites) {
-            final favoriteItem = {
-              'id': item.id,
-              'title': item.title,
-              'description': item.description,
-              'thumbnailUrl': item.thumbnailUrl,
-              'platform': item.platform.name,
-              'channelName': item.channelName,
-              'artistName': item.artistName,
-              'duration': item.duration,
-              'viewCount': item.viewCount,
-              'publishedAt': item.publishedAt?.millisecondsSinceEpoch,
-              'category': item.category.name,
-              'addedAt': DateTime.now().millisecondsSinceEpoch,
-            };
-            await _favoritesBox.put(item.id, favoriteItem);
-          }
-        }
-      }
+      // Always load local favorites first (fast and reliable)
+      final favoriteItems = _favoritesBox.values.toList();
       
-      // If no Firebase favorites or user not signed in, use local favorites
-      if (favorites.isEmpty) {
-        final favoriteItems = _favoritesBox.values.toList();
-        
-        // Sort by added date (most recent first)
-        favoriteItems.sort((a, b) {
-          final addedAtA = a['addedAt'] as int? ?? 0;
-          final addedAtB = b['addedAt'] as int? ?? 0;
-          return addedAtB.compareTo(addedAtA);
-        });
+      // Sort by added date (most recent first)
+      favoriteItems.sort((a, b) {
+        final addedAtA = a['addedAt'] as int? ?? 0;
+        final addedAtB = b['addedAt'] as int? ?? 0;
+        return addedAtB.compareTo(addedAtA);
+      });
 
-        favorites = favoriteItems.map((item) => _mapToContentItem(item)).toList();
+      favorites = favoriteItems.map((item) => _mapToContentItem(item)).toList();
+      
+      // If user is signed in, try to sync with Firebase (non-blocking, with timeout)
+      if (_firebaseSync.isSignedIn && favorites.isEmpty) {
+        try {
+          final firebaseFavorites = await _firebaseSync.getFavoritesFromFirebase()
+              .timeout(const Duration(seconds: 5), onTimeout: () {
+            print('⚠️ Firebase favorites fetch timed out, using local favorites');
+            return <ContentItem>[];
+          });
+          
+          if (firebaseFavorites.isNotEmpty) {
+            favorites = firebaseFavorites;
+            // Also sync Firebase favorites to local storage
+            for (final item in firebaseFavorites) {
+              final favoriteItem = {
+                'id': item.id,
+                'title': item.title,
+                'description': item.description,
+                'thumbnailUrl': item.thumbnailUrl,
+                'platform': item.platform.name,
+                'channelName': item.channelName,
+                'artistName': item.artistName,
+                'duration': item.duration,
+                'viewCount': item.viewCount,
+                'publishedAt': item.publishedAt?.millisecondsSinceEpoch,
+                'category': item.category.name,
+                'addedAt': DateTime.now().millisecondsSinceEpoch,
+              };
+              await _favoritesBox.put(item.id, favoriteItem);
+            }
+          }
+        } catch (e) {
+          print('⚠️ Error syncing Firebase favorites (non-critical): $e');
+          // Continue with local favorites
+        }
       }
 
       return favorites;
     } catch (e) {
-      print('Error getting favorites: $e');
-      // Fallback to local favorites on error
-      try {
-        final favoriteItems = _favoritesBox.values.toList();
-        favoriteItems.sort((a, b) {
-          final addedAtA = a['addedAt'] as int? ?? 0;
-          final addedAtB = b['addedAt'] as int? ?? 0;
-          return addedAtB.compareTo(addedAtA);
-        });
-        return favoriteItems.map((item) => _mapToContentItem(item)).toList();
-      } catch (e2) {
-        return [];
-      }
+      print('❌ Error getting favorites: $e');
+      // Fallback to empty list on error
+      return [];
     }
   }
 

@@ -82,12 +82,33 @@ class _MoviesRecommendationsScreenState extends State<MoviesRecommendationsScree
     try {
       print('🎬 Opening content: ${item.title} (${item.platform.name})');
       print('🔗 External URL: ${item.externalUrl}');
+      
+      // Ensure we have a valid context
+      if (!mounted) {
+        print('⚠️ Context not mounted, cannot show dialog');
+        return;
+      }
+      
+      // Use showDialog with proper configuration
       showDialog(
         context: context,
         barrierDismissible: true,
         barrierColor: Colors.black54,
-        builder: (BuildContext dialogContext) => MediaPlayer(content: item),
-      );
+        builder: (BuildContext dialogContext) {
+          return MediaPlayer(content: item);
+        },
+      ).catchError((error) {
+        print('❌ Error showing dialog: $error');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error opening content: $error'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      });
     } catch (e, stackTrace) {
       print('❌ Error showing dialog: $e');
       print('Stack trace: $stackTrace');
@@ -289,7 +310,8 @@ class _MoviesRecommendationsScreenState extends State<MoviesRecommendationsScree
           crossAxisCount: 2,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 0.48, // Further reduced to prevent overflow
+          // Adjusted to prevent overflow - slightly taller cards
+          childAspectRatio: 0.38,
         ),
         itemCount: _movieContent.length,
         itemBuilder: (context, index) {
@@ -358,91 +380,88 @@ class _MoviesRecommendationsScreenState extends State<MoviesRecommendationsScree
               ),
             ),
             
-            // Movie Info - Fixed height container to prevent overflow
-            SizedBox(
-              height: 50, // Fixed height
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Title - Fixed height for 2 lines
-                    SizedBox(
-                      height: 28,
-                      child: Text(
-                        content.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.2,
-                          height: 1.15,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+            // Movie Info - Optimized height to prevent overflow
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Title - Fixed height for 2 lines with tighter spacing
+                  SizedBox(
+                    height: 26,
+                    child: Text(
+                      content.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                        height: 1.2,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 3),
-                    
-                    // Year and Rating in same row - Fixed height
-                    SizedBox(
-                      height: 18,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Release Year
-                          if (content.publishedAt != null)
-                            Text(
-                              content.publishedAt!.year.toString(),
-                              style: TextStyle(
-                                color: Colors.grey[400],
-                                fontSize: 9,
-                                letterSpacing: -0.1,
-                              ),
-                            )
-                          else
-                            const SizedBox.shrink(),
-                          
-                          // Rating - Ultra compact
-                          if (content.rating != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF01B4E4), Color(0xFF01D277)],
-                                ),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.star,
-                                    color: Colors.white,
-                                    size: 9,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    content.rating!.toStringAsFixed(1),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                  ),
+                  const SizedBox(height: 2),
+                  
+                  // Year and Rating in same row - Compact height
+                  SizedBox(
+                    height: 16,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Release Year
+                        if (content.publishedAt != null)
+                          Text(
+                            content.publishedAt!.year.toString(),
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 9,
+                              letterSpacing: -0.1,
                             ),
-                        ],
-                      ),
+                          )
+                        else
+                          const SizedBox.shrink(),
+                        
+                        // Rating - Ultra compact
+                        if (content.rating != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF01B4E4), Color(0xFF01D277)],
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.star,
+                                  color: Colors.white,
+                                  size: 8,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  content.rating!.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],

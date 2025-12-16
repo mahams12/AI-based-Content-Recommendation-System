@@ -163,7 +163,7 @@ class _SearchDropdownState extends State<SearchDropdown> {
       onTap: () {
         // Close dropdown when tapping outside
         if (_showDropdown) {
-          _focusNode.unfocus();
+        _focusNode.unfocus();
           setState(() {
             _showDropdown = false;
           });
@@ -223,15 +223,15 @@ class _SearchDropdownState extends State<SearchDropdown> {
                       },
                     )
                   : widget.isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFF667eea),
-                          ),
-                        )
-                      : null,
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF667eea),
+                      ),
+                    )
+                  : null,
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,

@@ -47,6 +47,12 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>We need access to your microphone to record your voice responses for mood detection.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We need access to your camera to take profile pictures.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to your photo library to select profile pictures.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need access to save photos to your library.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -57,6 +63,15 @@
 				<string>com.googleusercontent.apps.597878741733-94oh71atkf557uqhrveuaocgcaanacmc</string>
 			</array>
 		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+		<string>youtube</string>
+		<string>spotify</string>
+		<string>vnd.youtube</string>
+		<string>comgooglemaps</string>
 	</array>
 </dict>
 </plist>

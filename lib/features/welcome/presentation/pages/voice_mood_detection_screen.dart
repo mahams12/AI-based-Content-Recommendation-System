@@ -97,9 +97,6 @@ class _VoiceMoodDetectionScreenState extends ConsumerState<VoiceMoodDetectionScr
   Future<void> _initializeServices() async {
     setState(() => _isProcessing = true);
 
-<<<<<<< HEAD
-    // Check microphone permission first
-=======
     // Initialize voice mood service
     print('🔄 Initializing voice mood detection service...');
     final moodInitialized = await _moodService.initialize();
@@ -118,7 +115,6 @@ class _VoiceMoodDetectionScreenState extends ConsumerState<VoiceMoodDetectionScr
     }
     
     // Check microphone permission
->>>>>>> e0288a4 (fixes)
     final hasPermission = await _recordingService.hasPermission();
     if (!hasPermission) {
       final granted = await _recordingService.requestPermission();
@@ -129,37 +125,13 @@ class _VoiceMoodDetectionScreenState extends ConsumerState<VoiceMoodDetectionScr
       }
     }
 
-    // Initialize voice mood service
-    final moodInitialized = await _moodService.initialize();
-
     setState(() {
       _isInitialized = moodInitialized;
       _isProcessing = false;
     });
 
-<<<<<<< HEAD
-    if (!moodInitialized && mounted) {
-      _showError(
-        'Failed to initialize voice mood detection model.\n\n'
-        'Please ensure the model file exists at:\n'
-        'assets/models/voice/my_model.tflite\n\n'
-        'After adding the file, run:\n'
-        'flutter clean\n'
-        'flutter pub get\n'
-        'flutter run',
-      );
-      
-      // Allow user to continue anyway (they can still record, but mood detection won't work)
-      await Future.delayed(const Duration(seconds: 3));
-      if (mounted) {
-        setState(() {
-          _isInitialized = true; // Allow UI to proceed, but mood detection will fail gracefully
-        });
-      }
-=======
     if (moodInitialized) {
       print('✅ Voice mood detection service initialized successfully');
->>>>>>> e0288a4 (fixes)
     }
   }
 

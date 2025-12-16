@@ -21,28 +21,53 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _loadHistory();
   }
 
+  // Reload history when screen becomes visible again
+  void _refreshHistory() {
+    _loadHistory();
+  }
+
   Future<void> _loadHistory() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      await _historyService.init();
-      final history = await _historyService.getHistory();
+      // Initialize with timeout to prevent hanging
+      await _historyService.init().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          print('⚠️ History init timed out, continuing anyway');
+        },
+      );
+      
+      // Get history with timeout
+      final history = await _historyService.getHistory().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          print('⚠️ Get history timed out, returning empty list');
+          return <ContentItem>[];
+        },
+      );
+      
       setState(() {
         _historyItems = history;
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ Error loading history: $e');
       setState(() {
+        _historyItems = [];
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading history: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Don't show error snackbar for timeout - just show empty state
+      if (!e.toString().contains('TimeoutException')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading history: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -90,11 +115,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  void _openContent(ContentItem item) {
-    showDialog(
+  void _openContent(ContentItem item) async {
+    await showDialog(
       context: context,
       builder: (context) => MediaPlayer(content: item),
     );
+    // Reload history after closing the media player
+    _refreshHistory();
   }
 
   IconData _getPlatformIcon(ContentType platform) {

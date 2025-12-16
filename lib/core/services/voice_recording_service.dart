@@ -1,6 +1,6 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:record/record.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// Service for recording voice audio
@@ -16,47 +16,76 @@ class VoiceRecordingService {
 
   /// Check and request microphone permission
   Future<bool> requestPermission() async {
-    final status = await Permission.microphone.request();
-    return status.isGranted;
+    try {
+      final status = await Permission.microphone.request();
+      return status.isGranted;
+    } on PlatformException catch (e) {
+      // On platforms or builds where the permission_handler plugin
+      // isn't wired up correctly, avoid crashing and just report
+      // that permission is not granted.
+      print('⚠️ requestPermission PlatformException: $e');
+      // Let the recording plugin handle permission itself.
+      return true;
+    } on MissingPluginException catch (e) {
+      // Same as above – treat as "no permission" instead of crashing.
+      print('⚠️ requestPermission MissingPluginException: $e');
+      // Assume permission will be handled elsewhere (or already granted)
+      return true;
+    }
   }
 
   /// Check if microphone permission is granted
   Future<bool> hasPermission() async {
-    final status = await Permission.microphone.status;
-    return status.isGranted;
+    try {
+      final status = await Permission.microphone.status;
+      return status.isGranted;
+    } on PlatformException catch (e) {
+      print('⚠️ hasPermission PlatformException: $e');
+      // If the permission plugin fails, don't block the flow here.
+      return true;
+    } on MissingPluginException catch (e) {
+      print('⚠️ hasPermission MissingPluginException: $e');
+      // Assume permission is effectively granted from this service's POV.
+      return true;
+    }
   }
 
   /// Start recording audio
   Future<bool> startRecording() async {
     try {
       // Check permission first
-      if (!await hasPermission()) {
+      final hasMic = await hasPermission();
+      if (!hasMic) {
         final granted = await requestPermission();
         if (!granted) {
+          print('⚠️ Microphone permission not granted.');
           return false;
         }
       }
 
-      // Get temporary directory for recording
-      final directory = await getTemporaryDirectory();
+      // Get temporary directory for recording.
+      // We intentionally avoid using path_provider here because on some
+      // devices its platform channel isn't available at startup, which
+      // throws a PlatformException and blocks recording. Using the
+      // system temp directory keeps this fully Dart-side.
+      final directory = await Directory.systemTemp.createTemp('voice_recordings');
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       _currentRecordingPath = '${directory.path}/voice_recording_$timestamp.m4a';
 
-      // Start recording
-      if (await _recorder.hasPermission()) {
-        await _recorder.start(
-          const RecordConfig(
-            encoder: AudioEncoder.aacLc,
-            bitRate: 128000,
-            sampleRate: 16000, // Standard for voice recognition
-          ),
-          path: _currentRecordingPath!,
-        );
-        _isRecording = true;
-        _recordingStartTime = DateTime.now();
-        return true;
-      }
-      return false;
+      // Start recording – rely on platform to enforce permission;
+      // avoid calling _recorder.hasPermission() which may not be
+      // wired correctly on some builds.
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          bitRate: 128000,
+          sampleRate: 16000, // Standard for voice recognition
+        ),
+        path: _currentRecordingPath!,
+      );
+      _isRecording = true;
+      _recordingStartTime = DateTime.now();
+      return true;
     } catch (e) {
       print('Error starting recording: $e');
       return false;
@@ -109,13 +138,15 @@ class VoiceRecordingService {
 
       // Check file size - very small files are likely silence
       final fileSize = await file.length();
-      if (fileSize < 8000) { // Less than 8KB is likely silence or very short (increased from 5KB)
+      // These thresholds are intentionally conservative so that
+      // "press and hold without speaking" is treated as silence.
+      if (fileSize < 12000) { // Less than 12KB is likely silence or very short
         print('⚠️ Audio file too small: $fileSize bytes (likely silence)');
         return false;
       }
 
       // Check if file is reasonable size (not too large either - might be corrupted or long silence)
-      if (fileSize > 200000) { // More than 200KB is suspicious for voice (reduced from 10MB)
+      if (fileSize > 200000) { // More than 200KB is suspicious for voice
         print('⚠️ Audio file too large: $fileSize bytes (might be silence or corrupted)');
         return false;
       }

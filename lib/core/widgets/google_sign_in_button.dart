@@ -196,8 +196,8 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
           }
           return;
         } else {
-          print('Google Sign-In cancelled by user');
-          return;
+        print('Google Sign-In cancelled by user');
+        return;
         }
       }
       
@@ -341,10 +341,10 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
         
         // Clear any existing sign-in state to ensure clean authentication
         try {
-          final GoogleSignInAccount? currentUser = _googleSignIn.currentUser;
-          if (currentUser != null) {
+      final GoogleSignInAccount? currentUser = _googleSignIn.currentUser;
+      if (currentUser != null) {
             print('Clearing previous sign-in session...');
-            await _googleSignIn.signOut();
+        await _googleSignIn.signOut();
             // Small delay to ensure sign-out completes
             await Future.delayed(const Duration(milliseconds: 300));
           }
@@ -431,7 +431,7 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
           }
         } catch (_) {
           errorMessage = 'Sign-in error. Please try signing out and signing in again.';
-        }
+      }
       }
       
       // Only show error if it's not a user cancellation

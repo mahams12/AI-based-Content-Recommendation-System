@@ -44,8 +44,9 @@ dependencies:
   # Spotify Integration (Web compatible)
   # spotify_sdk: ^3.0.2  # Not web compatible
   
-  # Image & Media (Web compatible)
-  # image_picker: ^1.0.7  # Not web compatible
+  # Image & Media
+  image_picker: ^1.0.7
+  firebase_storage: ^12.3.2
   # photo_view: ^0.14.0  # Not web compatible
   
   # Utilities
@@ -90,5 +91,6 @@ flutter:
     - assets/animations/
     - assets/models/
     - assets/models/voice/
-    - assets/models/voice/yamnet_classifier_int8.tflite
+    - assets/models/voice/yamnet_embeddings.tflite
+    - assets/models/voice/yamnet_classifier.tflite
     - assets/models/voice/label_map.json

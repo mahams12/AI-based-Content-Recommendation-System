@@ -21,7 +21,6 @@ class FavoriteButton extends StatefulWidget {
 class _FavoriteButtonState extends State<FavoriteButton> {
   final FavoritesService _favoritesService = FavoritesService();
   bool _isFavorite = false;
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -44,14 +43,15 @@ class _FavoriteButtonState extends State<FavoriteButton> {
   }
 
   Future<void> _toggleFavorite() async {
-    if (_isLoading) return;
 
+    // Update UI immediately without showing loading
+    final wasFavorite = _isFavorite;
     setState(() {
-      _isLoading = true;
+      _isFavorite = !_isFavorite;
     });
 
     try {
-      if (_isFavorite) {
+      if (wasFavorite) {
         await _favoritesService.removeFromFavorites(widget.content.id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -74,17 +74,11 @@ class _FavoriteButtonState extends State<FavoriteButton> {
           );
         }
       }
-
-      if (mounted) {
-        setState(() {
-          _isFavorite = !_isFavorite;
-          _isLoading = false;
-        });
-      }
     } catch (e) {
+      // Revert on error
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isFavorite = wasFavorite;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -107,22 +101,13 @@ class _FavoriteButtonState extends State<FavoriteButton> {
           color: Colors.black.withOpacity(0.5),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: _isLoading
-            ? SizedBox(
-                width: widget.size,
-                height: widget.size,
-                child: const CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Icon(
-                _isFavorite ? Icons.favorite : Icons.favorite_border,
-                size: widget.size,
-                color: _isFavorite 
-                    ? Colors.red 
-                    : (widget.color ?? Colors.white),
-              ),
+        child: Icon(
+          _isFavorite ? Icons.favorite : Icons.favorite_border,
+          size: widget.size,
+          color: _isFavorite 
+              ? Colors.red 
+              : (widget.color ?? Colors.white),
+        ),
       ),
     );
   }

@@ -196,17 +196,19 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
       return;
     }
     
-    // More lenient validation - accept if file size is reasonable
-    if (fileSize < 2000) {
-      print('⚠️ Audio file very small: $fileSize bytes (might be silence)');
-      // Don't reject immediately - let the model decide
-    } else {
-      print('✅ Audio file size looks good: $fileSize bytes');
+    // Strict validation: require that the recording actually contains speech.
+    // This prevents detecting a mood when the user doesn't say anything.
+    final hasSpeech = await _recordingService.validateAudioHasSpeech(audioPath);
+    if (!hasSpeech) {
+      print('❌ validateAudioHasSpeech returned false – likely silence.');
+      _showError('No speech detected. Please hold the button and speak clearly.');
+      setState(() {
+        _isProcessing = false;
+      });
+      return;
     }
 
-    // Skip strict speech validation - let the model decide
-    // The model's silence detection will handle this better
-    print('🎤 Proceeding to mood detection...');
+    print('🎤 Audio validation passed, proceeding to mood detection...');
     print('🎤 ===========================================');
 
     // Process the audio to detect mood using YAMNet
@@ -230,8 +232,9 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
     }
     print('📊 ======================================');
     
-    // Accept if confidence > 0.15 (very low threshold) and not extremely dominant neutral
-    if (result.isSuccess && result.confidence > 0.15 && !isNeutralWithExtremelyHighConfidence) {
+    // Accept if successful - accept any mood regardless of confidence (like before)
+    // Only reject if there's an actual error or extremely dominant neutral (likely silence)
+    if (result.isSuccess && result.error == null && !isNeutralWithExtremelyHighConfidence) {
       setState(() {
         _detectedMood = result.mood;
       });
@@ -241,12 +244,10 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
       // Use GPT to interpret the mood (enhanced interpretation)
       await _interpretMoodWithGPT(result);
     } else {
-      // Only reject if extremely low confidence or error
+      // Only reject if error or extremely dominant neutral (likely silence)
       String errorMsg;
       if (isNeutralWithExtremelyHighConfidence) {
         errorMsg = 'No speech detected. Please speak clearly when recording.';
-      } else if (result.confidence <= 0.15) {
-        errorMsg = 'Could not detect mood clearly. Please speak more clearly and try again.';
       } else if (result.error != null) {
         errorMsg = result.error!;
       } else {

@@ -82,12 +82,12 @@ class _YouTubeRecommendationsScreenState extends State<YouTubeRecommendationsScr
     try {
       print('📺 Opening content: ${item.title} (${item.platform.name})');
       print('🔗 External URL: ${item.externalUrl}');
-      showDialog(
-        context: context,
+    showDialog(
+      context: context,
         barrierDismissible: true,
         barrierColor: Colors.black54,
         builder: (BuildContext dialogContext) => MediaPlayer(content: item),
-      );
+    );
     } catch (e, stackTrace) {
       print('❌ Error showing dialog: $e');
       print('Stack trace: $stackTrace');
@@ -99,8 +99,8 @@ class _YouTubeRecommendationsScreenState extends State<YouTubeRecommendationsScr
             duration: const Duration(seconds: 3),
           ),
         );
-      }
     }
+  }
   }
 
 
@@ -340,11 +340,11 @@ class _YouTubeRecommendationsScreenState extends State<YouTubeRecommendationsScr
             // Content Info - Fixed height to prevent overflow
             Container(
               height: 80,
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
-                children: [
+                  children: [
                   // Title - Fixed height
                   SizedBox(
                     height: 32,
@@ -359,9 +359,9 @@ class _YouTubeRecommendationsScreenState extends State<YouTubeRecommendationsScr
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  
+                    ),
+                    const SizedBox(height: 4),
+                    
                   // Channel/Artist - Fixed height
                   SizedBox(
                     height: 16,
@@ -375,30 +375,30 @@ class _YouTubeRecommendationsScreenState extends State<YouTubeRecommendationsScr
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const Spacer(),
-                  
+                    ),
+                    const Spacer(),
+                    
                   // Duration - Fixed at bottom
-                  if (content.duration != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        content.duration!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
+                    if (content.duration != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          content.duration!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
               ),
             ),
           ],

@@ -15,8 +15,10 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.ai_based_content_recommendation_system/audio_decoder"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        // Use the default FlutterActivity registration so that all plugins
+        // (path_provider, permission_handler, record, etc.) are wired up.
         super.configureFlutterEngine(flutterEngine)
-        
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "decodeAudioToPCM" -> {

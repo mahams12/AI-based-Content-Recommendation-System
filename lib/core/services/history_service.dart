@@ -15,6 +15,13 @@ class HistoryService {
 
   Future<void> addToHistory(ContentItem item) async {
     try {
+      print('📝 Adding to history: ${item.title} (${item.id})');
+      
+      // Ensure box is initialized
+      if (!_historyBox.isOpen) {
+        await init();
+      }
+      
       final historyItem = {
         'id': item.id,
         'title': item.title,
@@ -27,6 +34,7 @@ class HistoryService {
         'viewCount': item.viewCount,
         'publishedAt': item.publishedAt?.millisecondsSinceEpoch,
         'category': item.category.name,
+        'externalUrl': item.externalUrl, // Add externalUrl for links
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
 
@@ -35,14 +43,28 @@ class HistoryService {
       
       // Add to beginning of list (local storage)
       await _historyBox.put(item.id, historyItem);
+      print('✅ Saved to local history: ${item.title}');
       
-      // Sync to Firebase if user is signed in
-      await _firebaseSync.syncHistoryToFirebase(item);
+      // Sync to Firebase if user is signed in (non-blocking, with timeout)
+      if (_firebaseSync.isSignedIn) {
+        try {
+          await _firebaseSync.syncHistoryToFirebase(item).timeout(
+            const Duration(seconds: 3),
+            onTimeout: () {
+              print('⚠️ Firebase history sync timed out (non-critical)');
+            },
+          );
+        } catch (e) {
+          print('⚠️ Firebase history sync error (non-critical): $e');
+        }
+      }
       
       // Limit history size
       await _limitHistorySize();
+      print('✅ Successfully added ${item.title} to history');
     } catch (e) {
-      print('Error adding to history: $e');
+      print('❌ Error adding to history: $e');
+      rethrow; // Re-throw so caller knows it failed
     }
   }
 
@@ -99,14 +121,14 @@ class HistoryService {
       
       // If no Firebase history or user not signed in, use local history
       if (history.isEmpty) {
-        final historyItems = _historyBox.values.toList();
-        
-        // Sort by timestamp (most recent first)
-        historyItems.sort((a, b) {
-          final timestampA = a['timestamp'] as int? ?? 0;
-          final timestampB = b['timestamp'] as int? ?? 0;
-          return timestampB.compareTo(timestampA);
-        });
+      final historyItems = _historyBox.values.toList();
+      
+      // Sort by timestamp (most recent first)
+      historyItems.sort((a, b) {
+        final timestampA = a['timestamp'] as int? ?? 0;
+        final timestampB = b['timestamp'] as int? ?? 0;
+        return timestampB.compareTo(timestampA);
+      });
 
         history = historyItems.map((item) => _mapToContentItem(item)).toList();
       }
@@ -124,7 +146,7 @@ class HistoryService {
         });
         return historyItems.map((item) => _mapToContentItem(item)).toList();
       } catch (e2) {
-        return [];
+      return [];
       }
     }
   }
@@ -172,6 +194,7 @@ class HistoryService {
       publishedAt: item['publishedAt'] != null 
           ? DateTime.fromMillisecondsSinceEpoch(item['publishedAt'] as int)
           : null,
+      externalUrl: item['externalUrl'] as String?, // Include externalUrl for links
     );
   }
 

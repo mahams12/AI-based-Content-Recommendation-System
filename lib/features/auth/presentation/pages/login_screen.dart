@@ -6,9 +6,9 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/animated_logo.dart';
 import '../../../../core/widgets/animated_button.dart';
 import '../../../../core/widgets/glassmorphism_card.dart';
-import '../../../../core/widgets/google_sign_in_button.dart';
 import '../providers/auth_provider.dart';
 import 'register_screen.dart';
+import 'password_reset_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -71,6 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -248,50 +249,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           
                           const SizedBox(height: 16),
                           
-                          // Divider
-                          Row(
-                            children: [
-                              const Expanded(child: Divider()),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Text(
-                                  'OR',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
+                          // Forgot Password Link
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: _isLoading
+                                  ? null
+                                  : () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => const PasswordResetScreen(),
+                                        ),
+                                      );
+                                    },
+                              child: Text(
+                                'Forgot Password?',
+                                style: TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              const Expanded(child: Divider()),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          // Google Sign In Button
-                          GoogleSignInButton(
-                            isLoading: _isLoading,
-                            onSuccess: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Welcome! Signed in with Google successfully.',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                                  ),
-                                  backgroundColor: AppTheme.successColor,
-                                ),
-                              );
-                            },
-                            onError: (error) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    error,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                                  ),
-                                  backgroundColor: AppTheme.errorColor,
-                                ),
-                              );
-                            },
+                            ),
                           ),
                         ],
                       ),

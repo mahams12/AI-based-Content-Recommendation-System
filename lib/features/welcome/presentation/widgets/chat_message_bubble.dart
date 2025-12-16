@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../pages/welcome_screen.dart';
+import '../../../../core/models/chat_message.dart';
 
 class ChatMessageBubble extends StatefulWidget {
   final ChatMessage message;
@@ -126,14 +128,7 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble>
                           width: 1,
                         ),
                       ),
-                      child: Text(
-                        widget.message.text,
-                        style: GoogleFonts.inter(
-                          fontSize: 15,
-                          color: Colors.white,
-                          height: 1.4,
-                        ),
-                      ),
+                      child: _buildMessageWithLinks(widget.message.text),
                     ),
                     
                     const SizedBox(height: 8),
@@ -165,12 +160,12 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble>
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      option.split(' ')[0], // Get emoji
+                                      option.split(' ').first, // Get emoji only
                                       style: const TextStyle(fontSize: 18),
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      option,
+                                      option.split(' ').skip(1).join(' '), // Get text without emoji
                                       style: GoogleFonts.inter(
                                         fontSize: 14,
                                         color: Colors.white.withOpacity(0.9),
@@ -236,6 +231,82 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble>
     } else {
       return '${difference.inDays}d ago';
     }
+  }
+
+  Widget _buildMessageWithLinks(String text) {
+    // Regular expression to find URLs
+    final urlRegex = RegExp(
+      r'https?://[^\s]+',
+      caseSensitive: false,
+    );
+
+    final matches = urlRegex.allMatches(text);
+    if (matches.isEmpty) {
+      // No URLs found, return plain text
+      return Text(
+        text,
+        style: GoogleFonts.inter(
+          fontSize: 15,
+          color: Colors.white,
+          height: 1.4,
+        ),
+      );
+    }
+
+    // Build RichText with clickable links
+    final spans = <TextSpan>[];
+    int lastEnd = 0;
+
+    for (final match in matches) {
+      // Add text before the URL
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: GoogleFonts.inter(
+            fontSize: 15,
+            color: Colors.white,
+            height: 1.4,
+          ),
+        ));
+      }
+
+      // Add clickable URL
+      final url = match.group(0)!;
+      spans.add(TextSpan(
+        text: url,
+        style: GoogleFonts.inter(
+          fontSize: 15,
+          color: AppTheme.primaryColor,
+          height: 1.4,
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () async {
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
+      ));
+
+      lastEnd = match.end;
+    }
+
+    // Add remaining text after the last URL
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: GoogleFonts.inter(
+          fontSize: 15,
+          color: Colors.white,
+          height: 1.4,
+        ),
+      ));
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+    );
   }
 }
 

@@ -82,12 +82,12 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
     try {
       print('🎵 Opening content: ${item.title} (${item.platform.name})');
       print('🔗 External URL: ${item.externalUrl}');
-      showDialog(
-        context: context,
+    showDialog(
+      context: context,
         barrierDismissible: true,
         barrierColor: Colors.black54,
         builder: (BuildContext dialogContext) => MediaPlayer(content: item),
-      );
+    );
     } catch (e, stackTrace) {
       print('❌ Error showing dialog: $e');
       print('Stack trace: $stackTrace');
@@ -99,8 +99,8 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
             duration: const Duration(seconds: 3),
           ),
         );
-      }
     }
+  }
   }
 
 
@@ -358,15 +358,15 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
                   SizedBox(
                     height: 20,
                     child: Text(
-                      content.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    content.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -375,15 +375,15 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
                   SizedBox(
                     height: 18,
                     child: Text(
-                      content.artistName ?? 'Unknown Artist',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                        letterSpacing: -0.1,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    content.artistName ?? 'Unknown Artist',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 14,
+                      letterSpacing: -0.1,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   ),
                   
                   // Album - Fixed height (only if exists)
@@ -392,15 +392,15 @@ class _MusicRecommendationsScreenState extends State<MusicRecommendationsScreen>
                     SizedBox(
                       height: 16,
                       child: Text(
-                        content.albumName!,
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 12,
-                          letterSpacing: -0.1,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      content.albumName!,
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 12,
+                        letterSpacing: -0.1,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     ),
                   ],
                 ],

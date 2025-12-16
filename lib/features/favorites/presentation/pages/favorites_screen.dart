@@ -27,25 +27,45 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     });
 
     try {
-      await _favoritesService.init();
-      final favorites = await _favoritesService.getFavorites();
+      // Initialize with timeout to prevent hanging
+      await _favoritesService.init().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          print('⚠️ Favorites init timed out, continuing anyway');
+        },
+      );
+      
+      // Get favorites with timeout
+      final favorites = await _favoritesService.getFavorites().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          print('⚠️ Get favorites timed out, returning empty list');
+          return <ContentItem>[];
+        },
+      );
+      
       setState(() {
         _favoriteItems = favorites;
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ Error loading favorites: $e');
       setState(() {
+        _favoriteItems = [];
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error loading favorites: $e',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+      // Don't show error snackbar for timeout - just show empty state
+      if (!e.toString().contains('TimeoutException')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error loading favorites: $e',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
+            backgroundColor: Colors.red,
           ),
-          backgroundColor: Colors.red,
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -99,11 +119,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
   }
 
-  void _openContent(ContentItem item) {
-    showDialog(
+  void _openContent(ContentItem item) async {
+    await showDialog(
       context: context,
       builder: (context) => MediaPlayer(content: item),
     );
+    // Reload favorites after closing the media player (in case user unfavorited)
+    _loadFavorites();
   }
 
   IconData _getPlatformIcon(ContentType platform) {

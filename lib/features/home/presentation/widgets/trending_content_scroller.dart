@@ -200,10 +200,47 @@ class _TrendingContentScrollerState extends State<TrendingContentScroller>
   }
 
   void _openContent(ContentItem item) {
-    showDialog(
-      context: context,
-      builder: (context) => MediaPlayer(content: item),
-    );
+    try {
+      print('🎬 Opening content: ${item.title} (${item.platform.name})');
+      print('🔗 External URL: ${item.externalUrl}');
+      
+      if (!mounted) {
+        print('⚠️ Context not mounted, cannot show dialog');
+        return;
+      }
+      
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierColor: Colors.black54,
+        builder: (BuildContext dialogContext) {
+          return MediaPlayer(content: item);
+        },
+      ).catchError((error) {
+        print('❌ Error showing dialog: $error');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error opening content: $error'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    } catch (e, stackTrace) {
+      print('❌ Error in _openContent: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening content: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   void _onContentTypeChanged(String? contentType) {

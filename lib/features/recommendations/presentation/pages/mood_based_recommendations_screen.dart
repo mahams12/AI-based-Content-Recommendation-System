@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/content_model.dart';
 import '../../../../core/widgets/media_player.dart';
 import '../../../../core/widgets/safe_network_image.dart';
+import '../../../../core/services/api_service.dart';
+import '../../../../core/services/mood_based_filtering_service.dart';
 import '../../../home/presentation/widgets/mood_selector.dart';
 
 class MoodBasedRecommendationsScreen extends ConsumerStatefulWidget {
@@ -23,6 +25,8 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
   String _selectedCategory = 'all';
   bool _isGeneratingPlaylist = false;
   List<ContentItem> _moodPlaylist = [];
+  final ApiService _apiService = ApiService();
+  final MoodBasedFilteringService _moodFilterService = MoodBasedFilteringService();
 
   @override
   void initState() {
@@ -136,11 +140,21 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
     }
   }
 
-  void _openContent(ContentItem item) {
-    showDialog(
+  void _openContent(ContentItem item) async {
+    await showDialog(
       context: context,
       builder: (context) => MediaPlayer(content: item),
     );
+    // Refresh playlist after closing media player
+    if (_moodPlaylist.isNotEmpty) {
+      _refreshPlaylist();
+    }
+  }
+
+  Future<void> _refreshPlaylist() async {
+    if (_selectedMood != 'all') {
+      await _generateMoodPlaylist();
+    }
   }
 
   String _getMoodDescription(String mood) {
@@ -198,127 +212,111 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
   }
 
   Future<List<ContentItem>> _generateLocalMoodPlaylist(String mood) async {
-    // Simulate local mood-based playlist generation
-    await Future.delayed(const Duration(seconds: 2));
+    print('🎵 Generating mood playlist for: $mood, category: $_selectedCategory');
+    List<ContentItem> allContent = [];
     
-    // Generate content based on mood and category
-    List<ContentItem> playlist = [];
-    
-    if (_selectedCategory == 'all') {
-      // Mix of all content types
-      playlist = [
-        ContentItem(
-          id: '1',
-          title: 'Sample $mood YouTube Video',
-          description: 'Perfect $mood video content',
-          thumbnailUrl: '',
-          platform: ContentType.youtube,
-          channelName: 'Sample Channel',
-          duration: '3:45',
-          viewCount: 1000,
-          publishedAt: DateTime.now(),
-          category: ContentCategory.video,
-        ),
-        ContentItem(
-          id: '2',
-          title: 'Sample $mood Song',
-          description: 'Great $mood music',
-          thumbnailUrl: '',
-          platform: ContentType.spotify,
-          artistName: 'Sample Artist',
-          duration: '4:20',
-          publishedAt: DateTime.now(),
-          category: ContentCategory.music,
-        ),
-        ContentItem(
-          id: '3',
-          title: 'Sample $mood Movie',
-          description: 'Perfect $mood movie',
-          thumbnailUrl: '',
-          platform: ContentType.tmdb,
-          publishedAt: DateTime.now(),
-          category: ContentCategory.movie,
-        ),
-      ];
-    } else if (_selectedCategory == 'youtube') {
-      // YouTube videos only
-      playlist = [
-        ContentItem(
-          id: '1',
-          title: 'Top $mood YouTube Video 1',
-          description: 'Amazing $mood content',
-          thumbnailUrl: '',
-          platform: ContentType.youtube,
-          channelName: 'Mood Channel',
-          duration: '5:30',
-          viewCount: 2500,
-          publishedAt: DateTime.now(),
-          category: ContentCategory.video,
-        ),
-        ContentItem(
-          id: '2',
-          title: 'Best $mood YouTube Video 2',
-          description: 'Incredible $mood moments',
-          thumbnailUrl: '',
-          platform: ContentType.youtube,
-          channelName: 'Vibe Channel',
-          duration: '4:15',
-          viewCount: 1800,
-          publishedAt: DateTime.now(),
-          category: ContentCategory.video,
-        ),
-      ];
-    } else if (_selectedCategory == 'music') {
-      // Songs only
-      playlist = [
-        ContentItem(
-          id: '1',
-          title: 'Perfect $mood Song 1',
-          description: 'Amazing $mood vibes',
-          thumbnailUrl: '',
-          platform: ContentType.spotify,
-          artistName: 'Mood Artist',
-          duration: '3:45',
-          publishedAt: DateTime.now(),
-          category: ContentCategory.music,
-        ),
-        ContentItem(
-          id: '2',
-          title: 'Best $mood Song 2',
-          description: 'Incredible $mood beats',
-          thumbnailUrl: '',
-          platform: ContentType.spotify,
-          artistName: 'Vibe Artist',
-          duration: '4:20',
-          publishedAt: DateTime.now(),
-          category: ContentCategory.music,
-        ),
-      ];
-    } else if (_selectedCategory == 'movies') {
-      // Movies only
-      playlist = [
-        ContentItem(
-          id: '1',
-          title: 'Perfect $mood Movie 1',
-          description: 'Amazing $mood cinema',
-          thumbnailUrl: '',
-          platform: ContentType.tmdb,
-          publishedAt: DateTime.now(),
-          category: ContentCategory.movie,
-        ),
-        ContentItem(
-          id: '2',
-          title: 'Best $mood Movie 2',
-          description: 'Incredible $mood story',
-          thumbnailUrl: '',
-          platform: ContentType.tmdb,
-          publishedAt: DateTime.now(),
-          category: ContentCategory.movie,
-        ),
-      ];
+    try {
+      // Fetch content based on selected category
+      if (_selectedCategory == 'all') {
+        // Fetch from all categories - 10 items each to ensure we have enough
+        print('📺 Fetching YouTube trending...');
+        final youtubeResult = await _apiService.getYouTubeTrending(maxResults: 10);
+        if (youtubeResult.isSuccess) {
+          allContent.addAll(youtubeResult.data!);
+          print('✅ Fetched ${youtubeResult.data!.length} YouTube videos');
+        } else {
+          print('⚠️ YouTube fetch failed: ${youtubeResult.error}');
+        }
+        
+        print('🎵 Fetching Spotify playlists...');
+        final spotifyResult = await _apiService.getSpotifyFeaturedPlaylists(limit: 10);
+        if (spotifyResult.isSuccess) {
+          allContent.addAll(spotifyResult.data!);
+          print('✅ Fetched ${spotifyResult.data!.length} Spotify tracks');
+        } else {
+          print('⚠️ Spotify fetch failed: ${spotifyResult.error}');
+        }
+        
+        print('🎬 Fetching TMDB popular...');
+        final tmdbResult = await _apiService.getTMDBPopular(type: 'movie', page: 1);
+        if (tmdbResult.isSuccess) {
+          allContent.addAll(tmdbResult.data!.take(10).toList());
+          print('✅ Fetched ${tmdbResult.data!.length} TMDB movies');
+        } else {
+          print('⚠️ TMDB fetch failed: ${tmdbResult.error}');
+        }
+      } else if (_selectedCategory == 'youtube') {
+        // Fetch YouTube videos only - 15 items to have enough for filtering
+        print('📺 Fetching YouTube trending...');
+        final youtubeResult = await _apiService.getYouTubeTrending(maxResults: 15);
+        if (youtubeResult.isSuccess) {
+          allContent.addAll(youtubeResult.data!);
+          print('✅ Fetched ${youtubeResult.data!.length} YouTube videos');
+        } else {
+          print('⚠️ YouTube fetch failed: ${youtubeResult.error}');
+        }
+      } else if (_selectedCategory == 'music') {
+        // Fetch Spotify songs only - 15 items
+        print('🎵 Fetching Spotify playlists...');
+        final spotifyResult = await _apiService.getSpotifyFeaturedPlaylists(limit: 15);
+        if (spotifyResult.isSuccess) {
+          allContent.addAll(spotifyResult.data!);
+          print('✅ Fetched ${spotifyResult.data!.length} Spotify tracks');
+        } else {
+          print('⚠️ Spotify fetch failed: ${spotifyResult.error}');
+        }
+      } else if (_selectedCategory == 'movies') {
+        // Fetch TMDB movies only - 15 items
+        print('🎬 Fetching TMDB popular...');
+        final tmdbResult = await _apiService.getTMDBPopular(type: 'movie', page: 1);
+        if (tmdbResult.isSuccess) {
+          allContent.addAll(tmdbResult.data!.take(15).toList());
+          print('✅ Fetched ${tmdbResult.data!.length} TMDB movies');
+        } else {
+          print('⚠️ TMDB fetch failed: ${tmdbResult.error}');
+        }
+      }
+      
+      print('📊 Total content fetched: ${allContent.length}');
+      
+      // Filter by mood using MoodBasedFilteringService
+      List<ContentItem> filteredContent;
+      if (mood == 'all') {
+        // For "all" mood, return a mix of content (2-3 per category if "all" selected)
+        if (_selectedCategory == 'all') {
+          // Ensure we have 2-3 items from each category
+          final youtubeItems = allContent.where((item) => item.platform == ContentType.youtube).take(3).toList();
+          final spotifyItems = allContent.where((item) => item.platform == ContentType.spotify).take(3).toList();
+          final tmdbItems = allContent.where((item) => item.platform == ContentType.tmdb).take(3).toList();
+          filteredContent = [...youtubeItems, ...spotifyItems, ...tmdbItems];
+        } else {
+          // For specific category, return 2-3 items
+          filteredContent = allContent.take(3).toList();
+        }
+      } else {
+        // Use mood-based filtering service
+        print('🎯 Filtering content by mood: $mood');
+        filteredContent = await _moodFilterService.filterContentByMood(
+          content: allContent,
+          mood: mood,
+          maxResults: _selectedCategory == 'all' ? 9 : 3, // 3 per category if "all", else 3 total
+        );
+        print('✅ Filtered to ${filteredContent.length} items');
+      }
+      
+      // Ensure we have at least some content
+      if (filteredContent.isEmpty && allContent.isNotEmpty) {
+        print('⚠️ Mood filtering returned empty, using top items');
+        filteredContent = allContent.take(_selectedCategory == 'all' ? 6 : 3).toList();
+      }
+      
+      print('🎉 Final playlist size: ${filteredContent.length}');
+      return filteredContent;
+    } catch (e) {
+      print('❌ Error generating mood playlist: $e');
+      // Return empty list on error
+      return [];
     }
-    
-    return playlist;
   }
 
   @override

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -34,11 +35,18 @@ void main() async {
   );
   
   // Initialize Hive for local storage
-  await Hive.initFlutter();
-  
-  // Initialize services
-  await StorageService.init();
-  await ApiService.init();
+  try {
+    await Hive.initFlutter();
+  } catch (e, stackTrace) {
+    // Fallback in case path_provider channel isn't ready yet on some devices
+    // This should not normally happen, but we don't want the app to crash to a black screen.
+    // Use a temporary directory so Hive can still function.
+    print('⚠️ Hive.initFlutter failed: $e');
+    print('📚 Stack trace: $stackTrace');
+    final fallbackDir = await Directory.systemTemp.createTemp('content_nation_hive');
+    print('ℹ️ Using fallback Hive directory: ${fallbackDir.path}');
+    Hive.init(fallbackDir.path);
+  }
   
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -63,6 +71,22 @@ class _MyAppState extends ConsumerState<MyApp> {
   }
 
   Future<void> _initializeServices() async {
+    // Initialize SharedPreferences + Hive-backed storage after runApp
+    try {
+      await StorageService.init();
+    } catch (e, stackTrace) {
+      print('⚠️ StorageService.init failed: $e');
+      print('📚 Stack trace: $stackTrace');
+    }
+
+    // Initialize API service
+    try {
+      await ApiService.init();
+    } catch (e, stackTrace) {
+      print('⚠️ ApiService.init failed: $e');
+      print('📚 Stack trace: $stackTrace');
+    }
+
     await _historyService.init();
     await _favoritesService.init();
     setState(() {

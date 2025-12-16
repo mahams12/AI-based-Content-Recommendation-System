@@ -1,10 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/services/user_profile_service.dart';
+import '../../core/models/content_model.dart';
+import '../../core/widgets/safe_network_image.dart';
 import '../../features/recommendations/presentation/pages/mood_based_recommendations_screen.dart';
 import '../../features/history/presentation/pages/history_screen.dart';
 import '../../features/favorites/presentation/pages/favorites_screen.dart';
 import '../../features/welcome/presentation/pages/simple_voice_welcome_screen.dart';
+import '../../features/chat/presentation/pages/chat_screen.dart';
 
 class PurpleSidebar extends ConsumerStatefulWidget {
   final int currentIndex;
@@ -28,6 +33,9 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
     with TickerProviderStateMixin {
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
+  final UserProfileService _profileService = UserProfileService();
+  String? _userName;
+  String? _userPhoto;
 
   @override
   void initState() {
@@ -43,6 +51,150 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
       parent: _slideController,
       curve: Curves.easeOutCubic,
     ));
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      print('📥 Loading user profile for sidebar...');
+      final profile = await _profileService.getUserProfile();
+      print('✅ Sidebar profile loaded: name=${profile['name']}, photoUrl=${profile['photoUrl']}');
+      
+      if (mounted) {
+        setState(() {
+          _userName = profile['name'];
+          // Only set photo if it's not null and not empty
+          final photoUrl = profile['photoUrl'];
+          _userPhoto = (photoUrl != null && photoUrl.toString().trim().isNotEmpty) 
+              ? photoUrl.toString() 
+              : null;
+        });
+        print('✅ Sidebar profile updated');
+      }
+    } catch (e) {
+      print('❌ Error loading profile for sidebar: $e');
+    }
+  }
+
+  Widget _buildSidebarProfilePicture() {
+    if (_userPhoto == null || _userPhoto!.isEmpty || _userPhoto!.trim().isEmpty) {
+      return Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+          ),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: const Icon(
+          Icons.auto_awesome_rounded,
+          color: Colors.white,
+          size: 28,
+        ),
+      );
+    }
+
+    final photo = _userPhoto!.trim();
+    
+    return CircleAvatar(
+      radius: 25,
+      backgroundColor: Colors.white.withOpacity(0.1),
+      child: photo.startsWith('http://') || photo.startsWith('https://')
+          ? ClipOval(
+              child: SafeNetworkImage(
+                imageUrl: photo,
+                width: 50,
+                height: 50,
+                fit: BoxFit.cover,
+                platform: ContentType.spotify,
+              ),
+            )
+          : photo.startsWith('/') || photo.startsWith('file://')
+              ? _buildFileImage(photo)
+              : Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                    ),
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+    );
+  }
+
+  Widget _buildFileImage(String photo) {
+    final filePath = photo.replaceFirst('file://', '');
+    try {
+      final file = File(filePath);
+      if (file.existsSync()) {
+        return ClipOval(
+          child: Image.file(
+            file,
+            width: 50,
+            height: 50,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                  ),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: const Icon(
+                  Icons.person,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              );
+            },
+          ),
+        );
+      } else {
+        return Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+            ),
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: const Icon(
+            Icons.person,
+            color: Colors.white,
+            size: 28,
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error loading file image in sidebar: $e');
+      return Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+          ),
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: const Icon(
+          Icons.person,
+          color: Colors.white,
+          size: 28,
+        ),
+      );
+    }
   }
 
   @override
@@ -51,6 +203,8 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
     if (widget.isOpen != oldWidget.isOpen) {
       if (widget.isOpen) {
         _slideController.forward();
+        // Reload profile when sidebar opens
+        _loadUserProfile();
       } else {
         _slideController.reverse();
       }
@@ -103,6 +257,14 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
       case 5: // Profile
         widget.onTap(4);
         break;
+      case 6: // Chat Interface
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ChatScreen(),
+          ),
+        );
+        break;
     }
   }
 
@@ -147,37 +309,25 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
                   padding: const EdgeInsets.all(20),
                   child: Row(
                     children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-                          ),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
+                      // Profile Picture or App Icon
+                      _buildSidebarProfilePicture(),
                       const SizedBox(width: 16),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Content Nation',
-                              style: TextStyle(
+                              _userName ?? 'Content Nation',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              'AI-Powered Discovery',
-                              style: TextStyle(
+                              _userName != null ? 'Welcome back!' : 'AI-Powered Discovery',
+                              style: const TextStyle(
                                 color: Colors.white60,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
@@ -214,6 +364,7 @@ class _PurpleSidebarState extends ConsumerState<PurpleSidebar>
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     children: [
                       _buildNavItem(Icons.home_rounded, 'Home', 0),
+                      _buildNavItem(Icons.chat_bubble_rounded, 'Chat Interface', 6),
                       _buildNavItem(Icons.mood_rounded, 'Mood-Based Recommendations', 1),
                       _buildNavItem(Icons.mic_rounded, 'Voice Mood Detection', 2),
                       _buildNavItem(Icons.history_rounded, 'History', 3),

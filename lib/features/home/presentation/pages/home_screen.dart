@@ -1,25 +1,33 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/user_profile_service.dart';
 import '../../../../core/models/content_model.dart';
 import '../../../../core/widgets/media_player.dart';
 import '../../../../core/widgets/safe_network_image.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../widgets/trending_content_scroller.dart';
-import '../../../welcome/presentation/pages/welcome_screen.dart';
 import '../../../welcome/presentation/pages/simple_voice_welcome_screen.dart';
+import '../../../chat/presentation/pages/chat_screen.dart';
 import '../../../recommendations/presentation/pages/mood_based_recommendations_screen.dart';
+import '../../../youtube/presentation/pages/youtube_recommendations_screen.dart';
+import '../../../music/presentation/pages/music_recommendations_screen.dart';
+import '../../../movies/presentation/pages/movies_recommendations_screen.dart';
 
 
 // Main Home Screen
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStateMixin {
+  final UserProfileService _profileService = UserProfileService();
+  String? _userName;
+  String? _userPhoto;
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
@@ -69,6 +77,83 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _slideController.forward();
     _loadTrendingContent();
     _loadCategoryContent();
+    _loadUserProfile();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload profile when screen becomes visible again
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserProfile();
+    });
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      print('📥 Loading user profile for home screen...');
+      final profile = await _profileService.getUserProfile();
+      print('✅ Profile loaded: name=${profile['name']}, photoUrl=${profile['photoUrl']}');
+      
+      if (mounted) {
+        setState(() {
+          _userName = profile['name'];
+          // Only set photo if it's not null and not empty
+          final photoUrl = profile['photoUrl'];
+          _userPhoto = (photoUrl != null && photoUrl.toString().trim().isNotEmpty) 
+              ? photoUrl.toString() 
+              : null;
+        });
+        print('✅ Home screen profile updated');
+      }
+    } catch (e) {
+      print('❌ Error loading profile for home: $e');
+    }
+  }
+
+  Widget _buildProfilePicture() {
+    if (_userPhoto == null || _userPhoto!.isEmpty) {
+      return const Icon(Icons.person, size: 20, color: Colors.white);
+    }
+
+    final photo = _userPhoto!.trim();
+    
+    if (photo.startsWith('http://') || photo.startsWith('https://')) {
+      return ClipOval(
+        child: SafeNetworkImage(
+          imageUrl: photo,
+          width: 32,
+          height: 32,
+          fit: BoxFit.cover,
+          platform: ContentType.spotify,
+        ),
+      );
+    } else if (photo.startsWith('/') || photo.startsWith('file://')) {
+      final filePath = photo.replaceFirst('file://', '');
+      try {
+        final file = File(filePath);
+        if (file.existsSync()) {
+          return ClipOval(
+            child: Image.file(
+              file,
+              width: 32,
+              height: 32,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.person, size: 20, color: Colors.white);
+              },
+            ),
+          );
+        } else {
+          return const Icon(Icons.person, size: 20, color: Colors.white);
+        }
+      } catch (e) {
+        print('❌ Error loading file image: $e');
+        return const Icon(Icons.person, size: 20, color: Colors.white);
+      }
+    } else {
+      return const Icon(Icons.person, size: 20, color: Colors.white);
+    }
   }
 
   @override
@@ -206,23 +291,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
 
   void _openContent(ContentItem item) {
-    showDialog(
-      context: context,
-      builder: (context) => MediaPlayer(content: item),
-    );
-  }
-
-  void _openTrendingContentScroller(String title, ContentType platform, IconData icon, Color color, List<ContentItem> items) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TrendingContentScroller(
-          title: title,
-          platform: platform,
-          color: color,
-        ),
-      ),
-    );
+    try {
+      print('🎬 Opening content: ${item.title} (${item.platform.name})');
+      print('🔗 External URL: ${item.externalUrl}');
+      print('🆔 Content ID: ${item.id}');
+      
+      if (!mounted) {
+        print('⚠️ Context not mounted, cannot show dialog');
+        return;
+      }
+      
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierColor: Colors.black54,
+        builder: (BuildContext dialogContext) {
+          return MediaPlayer(content: item);
+        },
+      ).catchError((error) {
+        print('❌ Error showing dialog: $error');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error opening content: $error'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    } catch (e, stackTrace) {
+      print('❌ Error in _openContent: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening content: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -280,14 +390,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'Content Nation',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.6,
-                  ),
+                Row(
+                  children: [
+                    if (_userPhoto != null && _userPhoto!.isNotEmpty && _userPhoto!.trim().isNotEmpty) ...[
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: Colors.white.withOpacity(0.1),
+                        child: _buildProfilePicture(),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    Expanded(
+                      child: Text(
+                        _userName ?? 'Content Nation',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.6,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -425,18 +550,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return GestureDetector(
       onTap: () {
-        _openTrendingContentScroller(
-          'Trending $title',
-          platform,
-          icon,
-          color,
-          items,
-        );
+        // Open dedicated simple trending screens without extra filters/search
+        if (platform == ContentType.youtube) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const YouTubeRecommendationsScreen(),
+            ),
+          );
+        } else if (platform == ContentType.tmdb) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const MoviesRecommendationsScreen(),
+            ),
+          );
+        } else if (platform == ContentType.spotify) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const MusicRecommendationsScreen(),
+            ),
+          );
+        }
       },
       child: Container(
+        // Slightly taller cards to avoid any bottom overflow on small screens
         constraints: const BoxConstraints(
-          minHeight: 280,
-          maxHeight: 300,
+          minHeight: 300,
+          maxHeight: 320,
         ),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
@@ -530,7 +669,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     )
                   : SizedBox(
-                      height: 120,
+                      // Slightly taller to prevent bottom overflow of the
+                      // thumbnail + title column on smaller screens.
+                      height: 140,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: items.take(3).length,
@@ -618,62 +759,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ),
             ),
-<<<<<<< HEAD
-            const SizedBox(height: 10),
-            // See All Button - replaces the number display
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      color.withOpacity(0.25),
-                      color.withOpacity(0.15),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: color.withOpacity(0.4),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        'See All',
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.2,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Icon(
-                      Icons.arrow_forward_rounded,
-                      color: color,
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-=======
->>>>>>> e0288a4 (fixes)
           ],
         ),
       ),
@@ -864,43 +949,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-<<<<<<< HEAD
-                GestureDetector(
-                  onTap: () {
-                    _showAllCategoryContent(title, items);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1C2128),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: const Color(0xFF667eea).withOpacity(0.3),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'See All',
-                          style: const TextStyle(
-                            color: Color(0xFF667eea),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 18,
-                          color: Color(0xFF667eea),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-=======
->>>>>>> e0288a4 (fixes)
               ],
             ),
           ),
@@ -1304,7 +1352,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => const WelcomeScreen(),
+                      builder: (context) => const ChatScreen(),
                     ),
                   );
                 },

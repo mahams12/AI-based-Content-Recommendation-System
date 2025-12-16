@@ -30,11 +30,20 @@ class _MediaPlayerState extends State<MediaPlayer> {
   }
 
   Future<void> _initializeHistory() async {
-    await _historyService.init();
-    // Add to history when MediaPlayer opens
-    if (!_historyAdded) {
-      await _historyService.addToHistory(widget.content);
-      _historyAdded = true;
+    try {
+      // Initialize history service
+      await _historyService.init();
+      
+      // Add to history when MediaPlayer opens
+      if (!_historyAdded) {
+        print('📝 Adding ${widget.content.title} to history...');
+        await _historyService.addToHistory(widget.content);
+        _historyAdded = true;
+        print('✅ Successfully added to history');
+      }
+    } catch (e) {
+      print('❌ Error adding to history: $e');
+      // Don't block the UI if history fails
     }
   }
 
@@ -128,53 +137,58 @@ class _MediaPlayerState extends State<MediaPlayer> {
             ),
             const SizedBox(height: 24),
 
-            // Media Preview
-            Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: _getGradientColors()),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Stack(
-                children: [
-                  // Thumbnail or placeholder
-                  if (widget.content.thumbnailUrl.isNotEmpty)
-                    SafeNetworkImage(
-                      imageUrl: widget.content.thumbnailUrl,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
-                      borderRadius: BorderRadius.circular(16),
-                      platform: widget.content.platform,
-                    )
-                  else
-                    _buildPlaceholder(),
+            // Media Preview - Make entire area tappable
+            GestureDetector(
+              onTap: _isLoading ? null : _handlePlay,
+              child: Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: _getGradientColors()),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Stack(
+                  children: [
+                    // Thumbnail or placeholder
+                    if (widget.content.thumbnailUrl.isNotEmpty)
+                      SafeNetworkImage(
+                        imageUrl: widget.content.thumbnailUrl,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        borderRadius: BorderRadius.circular(16),
+                        platform: widget.content.platform,
+                      )
+                    else
+                      _buildPlaceholder(),
 
-                  // Play overlay
-                  Center(
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(40),
-                      ),
-                      child: IconButton(
-                        onPressed: _handlePlay,
-                        icon: Icon(
-                          _isLoading
-                              ? Icons.hourglass_empty_rounded
-                              : _isPlaying
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 40,
+                    // Play overlay
+                    Center(
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(40),
                         ),
+                        child: _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                _isPlaying
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: 40,
+                              ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -266,9 +280,7 @@ class _MediaPlayerState extends State<MediaPlayer> {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : () {
-                      _handlePlay();
-                    },
+                    onPressed: _isLoading ? null : _handlePlay,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _getGradientColors()[0],
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -369,130 +381,158 @@ class _MediaPlayerState extends State<MediaPlayer> {
       _isLoading = true;
     });
 
-    try {
-      // Always redirect to external platform - no direct playback
-      String url;
-      
-      switch (widget.content.platform) {
-        case ContentType.youtube:
-          // Use externalUrl if available, otherwise construct from ID
-          if (widget.content.externalUrl != null && widget.content.externalUrl!.isNotEmpty) {
-            url = widget.content.externalUrl!;
-          } else if (widget.content.id.isNotEmpty && !widget.content.id.startsWith('youtube_video_')) {
-            // Only use direct video URL if ID is a real YouTube video ID
-            url = 'https://www.youtube.com/watch?v=${widget.content.id}';
-          } else {
-            // For mock content, redirect to YouTube search
-            url = 'https://www.youtube.com/results?search_query=${Uri.encodeComponent(widget.content.title)}';
-          }
-          break;
-        case ContentType.spotify:
-          // Always redirect to Spotify - no preview playback
-          if (widget.content.externalUrl != null && widget.content.externalUrl!.isNotEmpty) {
-            url = widget.content.externalUrl!;
-          } else {
-            // Fallback: redirect to Spotify search for the track
-            url = 'https://open.spotify.com/search/${Uri.encodeComponent(widget.content.title)}';
-          }
-          break;
-      case ContentType.tmdb:
-        // For TMDB, try external URL first, then fallback to search
+    // Build URL first (fast, synchronous)
+    String url;
+    switch (widget.content.platform) {
+      case ContentType.youtube:
+        if (widget.content.externalUrl != null && widget.content.externalUrl!.isNotEmpty) {
+          url = widget.content.externalUrl!;
+        } else if (widget.content.id.isNotEmpty && !widget.content.id.startsWith('youtube_video_')) {
+          url = 'https://www.youtube.com/watch?v=${widget.content.id}';
+        } else {
+          url = 'https://www.youtube.com/results?search_query=${Uri.encodeComponent(widget.content.title)}';
+        }
+        break;
+      case ContentType.spotify:
         if (widget.content.externalUrl != null && widget.content.externalUrl!.isNotEmpty) {
           url = widget.content.externalUrl!;
         } else {
-          // Fallback: redirect to TMDB search for the movie
+          url = 'https://open.spotify.com/search/${Uri.encodeComponent(widget.content.title)}';
+        }
+        break;
+      case ContentType.tmdb:
+        if (widget.content.externalUrl != null && widget.content.externalUrl!.isNotEmpty) {
+          url = widget.content.externalUrl!;
+        } else {
           url = 'https://www.themoviedb.org/search?query=${Uri.encodeComponent(widget.content.title)}';
         }
         break;
-      }
+    }
 
-      print('🔗 Attempting to launch URL: $url');
+    print('🔗 Launching URL: $url');
+    
+    // Launch URL immediately (don't wait for history)
+    try {
+      final uri = Uri.parse(url);
       
+      // Try to launch quickly with minimal timeout
+      bool launched = false;
+      
+      // First attempt: externalApplication (fastest)
       try {
-        final uri = Uri.parse(url);
-        
-        // Try to launch URL directly - canLaunchUrl can be unreliable on Android
-        try {
-          print('🚀 Launching with externalApplication mode...');
-          final launched = await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
-          
-          print('✅ Launch result: $launched');
-          
-          if (launched) {
-            // Close the dialog after successful launch
-            if (mounted) {
-              Navigator.of(context).pop();
-              
-              // Show success message
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Opening ${widget.content.title}...'),
-                  backgroundColor: widget.content.platform == ContentType.spotify 
-                      ? const Color(0xFF1DB954) 
-                      : widget.content.platform == ContentType.youtube
-                          ? const Color(0xFFFF4444)
-                          : const Color(0xFF667eea),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            }
-          } else {
-            // If launchUrl returns false, try with platformDefault mode
-            print('⚠️ ExternalApplication failed, trying platformDefault...');
-            try {
-              final launched2 = await launchUrl(
-                uri,
-                mode: LaunchMode.platformDefault,
-              );
-              print('✅ PlatformDefault launch result: $launched2');
-              if (launched2 && mounted) {
-                Navigator.of(context).pop();
-              } else {
-                _showError('Could not open ${widget.content.platform.name}. Please install the app or try again.');
-              }
-            } catch (e2) {
-              print('❌ PlatformDefault error: $e2');
-              _showError('Could not open ${widget.content.platform.name}. Error: ${e2.toString()}');
-            }
-          }
-        } catch (launchError) {
-          // If launchUrl throws an error, show helpful message
-          print('❌ Launch error: $launchError');
-          _showError('Could not open ${widget.content.platform.name}. Please make sure the app is installed or try opening in browser.');
-        }
+        launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        ).timeout(
+          const Duration(seconds: 3), // Shorter timeout for faster response
+          onTimeout: () => false,
+        );
       } catch (e) {
-        print('❌ URL parse error: $e');
-        _showError('Invalid URL: ${e.toString()}');
+        print('⚠️ ExternalApplication error: $e');
       }
-    } catch (e) {
-      print('❌ General error: $e');
-      _showError('Error opening content: $e');
-    } finally {
+      
+      // Quick fallback if first attempt failed
+      if (!launched) {
+        try {
+          launched = await launchUrl(
+            uri,
+            mode: LaunchMode.platformDefault,
+          ).timeout(
+            const Duration(seconds: 3),
+            onTimeout: () => false,
+          );
+        } catch (e) {
+          print('⚠️ PlatformDefault error: $e');
+        }
+      }
+      
+      // Close dialog immediately if launched
+      if (launched && mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        Navigator.of(context).pop();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Opening ${widget.content.title}...'),
+            backgroundColor: widget.content.platform == ContentType.spotify 
+                ? const Color(0xFF1DB954) 
+                : widget.content.platform == ContentType.youtube
+                    ? const Color(0xFFFF4444)
+                    : const Color(0xFF667eea),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+        
+        // Add to history in background (non-blocking)
+        _addToHistoryInBackground();
+        return;
+      }
+      
+      // If launch failed, show error
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+        _showError('Could not open ${widget.content.platform.name}. Please try again.');
+      }
+    } catch (e) {
+      print('❌ Launch error: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showError('Error opening content: ${e.toString()}');
       }
     }
   }
 
+  // Add to history in background without blocking
+  void _addToHistoryInBackground() {
+    if (_historyAdded) return;
+    
+    Future.microtask(() async {
+      try {
+        await _historyService.init();
+        await _historyService.addToHistory(widget.content);
+        _historyAdded = true;
+        print('✅ Added ${widget.content.title} to history');
+      } catch (e) {
+        print('⚠️ Error adding to history: $e');
+        // Don't show error to user - history is not critical
+      }
+    });
+  }
+
   void _showError(String message) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: SingleChildScrollView(
+          child: Text(
+            message,
+            style: const TextStyle(fontSize: 14),
+          ),
+        ),
         backgroundColor: Colors.red[600],
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
       ),
     );
   }
 }
+

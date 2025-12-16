@@ -85,8 +85,8 @@
       function initializeGoogleSignIn() {
         if (window.google && window.google.accounts && window.google.accounts.id) {
           try {
-            window.google.accounts.id.initialize({
-              client_id: '597878741733-94oh71atkf557uqhrveuaocgcaanacmc.apps.googleusercontent.com',
+        window.google.accounts.id.initialize({
+          client_id: '597878741733-94oh71atkf557uqhrveuaocgcaanacmc.apps.googleusercontent.com',
               use_fedcm_for_prompt: false, // Explicitly disable FedCM
               ux_mode: 'popup', // Use popup mode
               auto_select: false,

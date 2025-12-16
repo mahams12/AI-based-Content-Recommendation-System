@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/services/storage_service.dart';
 
 class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key});
@@ -27,7 +28,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
   void initState() {
     super.initState();
     _setupAnimations();
-    _startWelcomeSequence();
+    _checkIfFirstTime();
   }
 
   void _setupAnimations() {
@@ -74,19 +75,17 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
     _slideController.forward();
   }
 
-<<<<<<< HEAD
   void _checkIfFirstTime() async {
     // Use WidgetsBinding to ensure this runs after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final hasCompletedWelcome = StorageService.getBool('has_completed_welcome');
       if (hasCompletedWelcome == true && mounted) {
         _navigateToHome();
+      } else {
+        _startWelcomeSequence();
       }
     });
   }
-
-=======
->>>>>>> e0288a4 (fixes)
   void _startWelcomeSequence() async {
     await Future.delayed(const Duration(milliseconds: 800));
     _typeController.forward();

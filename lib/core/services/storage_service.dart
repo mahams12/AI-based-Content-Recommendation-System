@@ -40,7 +40,13 @@ class StorageService {
   }
 
   static bool? getBool(String key) {
-    return _prefs.getBool(key);
+    try {
+      // Guard against cases where StorageService.init() failed or hasn't
+      // completed yet (e.g. during early splash/welcome screens).
+      return _prefs.getBool(key);
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<void> setInt(String key, int value) async {
