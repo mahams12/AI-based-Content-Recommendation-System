@@ -1,0 +1,8 @@
+// Copy this file to api_keys.dart and add your actual API keys
+// This file is gitignored to keep your keys secure
+
+class ApiKeys {
+  // Get your OpenAI API key from: https://platform.openai.com/api-keys
+  static const String openAiApiKey = 'YOUR_OPENAI_API_KEY_HERE';
+}
+
