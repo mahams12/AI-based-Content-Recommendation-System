@@ -60,11 +60,7 @@ dependencies:
   record: ^5.2.1  # Audio recording
   permission_handler: ^11.3.1  # Microphone permissions
   path_provider: ^2.1.2  # File system access for audio files
-<<<<<<< HEAD
-  just_audio: ^0.9.36  # Audio decoding and processing
-=======
   just_audio: ^0.9.40  # Audio decoding and processing
->>>>>>> e0288a4 (fixes)
   
   # AI & ML Libraries
   collection: ^1.18.0
@@ -93,10 +89,6 @@ flutter:
     - assets/icons/
     - assets/animations/
     - assets/models/
-<<<<<<< HEAD
-    - assets/models/voice/my_model.tflite
-=======
     - assets/models/voice/
     - assets/models/voice/yamnet_classifier_int8.tflite
     - assets/models/voice/label_map.json
->>>>>>> e0288a4 (fixes)

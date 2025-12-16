@@ -1,89 +1,28 @@
 import 'dart:io';
-<<<<<<< HEAD
-=======
 import 'dart:convert';
->>>>>>> e0288a4 (fixes)
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
-import 'package:just_audio/just_audio.dart';
 import 'voice_mood_service_interface.dart';
 import 'voice_mood_result.dart';
 
-<<<<<<< HEAD
-// Platform channel for audio decoding
-const MethodChannel _audioDecoderChannel = MethodChannel(
-  'com.example.ai_based_content_recommendation_system/audio_decoder',
-);
-=======
 // Import for int8 type
 import 'dart:typed_data' show Int8List;
->>>>>>> e0288a4 (fixes)
 
 /// Factory function for mobile platform
 VoiceMoodServiceInterface createVoiceMoodService() {
   return VoiceMoodServiceMobile();
 }
 
-<<<<<<< HEAD
-/// Mobile implementation of voice mood detection using TensorFlow Lite
-///
-/// ⚠️ CRITICAL LIMITATION: Currently uses SYNTHETIC audio samples, not real audio decoding.
-/// This means the model will NOT work accurately because it was trained on real voice data.
-///
-/// To fix this, you MUST implement native audio decoding:
-/// 1. Use platform channels to access Android MediaCodec / iOS AVFoundation
-/// 2. OR use flutter_sound package which can provide PCM samples
-/// 3. OR use a native audio processing library
-///
-/// DEBUGGING: This implementation includes comprehensive logging at each step:
-/// - Audio file loading and metadata
-/// - Sample extraction and statistics
-/// - Mel-spectrogram computation progress
-/// - Feature normalization statistics
-/// - Model input/output details
-/// - Mood detection results with probabilities
-///
-/// HOT RESTART: Hot restart should work for most code changes. However:
-/// - Model loading happens once and is cached - if you change model loading logic,
-///   you may need a full restart (stop and restart the app)
-/// - Native code changes (if any) require a full rebuild
-/// - If you see "Model not initialized" errors after hot restart, do a full restart
-=======
 /// Mobile implementation of voice mood detection using YAMNet-based TensorFlow Lite model
->>>>>>> e0288a4 (fixes)
 class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
   Interpreter? _interpreter;
   bool _isInitialized = false;
   static const String _modelPath = 'assets/models/voice/yamnet_classifier_int8.tflite';
   static const String _labelMapPath = 'assets/models/voice/label_map.json';
 
-<<<<<<< HEAD
-  // Mood categories - Model outputs 6 categories
-  // CRITICAL: Based on user feedback, the model's actual order appears to be:
-  // - Index 0: energetic (when energetic, index 0 is high)
-  // - Index 1: ? (unknown, needs testing)
-  // - Index 2: ? (unknown, needs testing)
-  // - Index 3: calm/relaxed (when calm or crying, index 3 is high - might be calm/sad/relaxed)
-  // - Index 4: ? (unknown, needs testing)
-  // - Index 5: ? (unknown, needs testing)
-  //
-  // TEMPORARY FIX: Reordering based on observed behavior:
-  // When crying → index 3 high → should be "sad"
-  // When energetic → index 0 high → should be "energetic"
-  // When calm → index 3 high → should be "calm"
-  //
-  // Trying a different mapping - common emotion recognition order:
-  final List<String> _moodCategories = [
-    'energetic', // Index 0 - CONFIRMED: when energetic, index 0 is high
-    'neutral', // Index 1 - unknown
-    'sad', // Index 2 - when "a bit sad", maybe this is high?
-    'happy', // Index 3 - CONFIRMED: when happy/energetic, index 3 is high (was incorrectly showing "sad")
-    'calm', // Index 4 - when calm, trying here
-    'relaxed', // Index 5 - unknown
-=======
   // Mood categories loaded from label_map.json
   List<String> _moodCategories = [
     'angry',
@@ -95,7 +34,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     'sad',
     'surprise',
     'unknown',
->>>>>>> e0288a4 (fixes)
   ];
 
   @override
@@ -105,23 +43,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     }
 
     try {
-<<<<<<< HEAD
-      // Check if asset exists
-      try {
-        await rootBundle.load(_modelPath);
-      } catch (e) {
-        print('❌ Model not found: $_modelPath');
-        _isInitialized = false;
-        return false;
-      }
-
-      // Load model from assets
-      final ByteData modelData = await rootBundle.load(_modelPath);
-      final Uint8List modelBytes = modelData.buffer.asUint8List();
-
-      if (modelBytes.isEmpty) {
-        print('❌ Model file is empty');
-=======
       print('🔄 Starting YAMNet model initialization...');
       print('📁 Model path: $_modelPath');
       print('📁 Label map path: $_labelMapPath');
@@ -139,20 +60,10 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         print('❌ Failed to load model file from assets: $e');
         print('💡 Make sure the file exists at: $_modelPath');
         print('💡 Run: flutter pub get and flutter clean, then rebuild');
->>>>>>> e0288a4 (fixes)
         _isInitialized = false;
         return false;
       }
 
-<<<<<<< HEAD
-      // Create interpreter
-      _interpreter = Interpreter.fromBuffer(modelBytes);
-
-      _isInitialized = true;
-      return true;
-    } catch (e) {
-      print('❌ Error initializing model: $e');
-=======
       final Uint8List modelBytes = modelData.buffer.asUint8List();
       print('📦 Model bytes prepared (${modelBytes.length} bytes)');
 
@@ -242,7 +153,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     } catch (e, stackTrace) {
       print('❌ Error initializing YAMNet voice mood model: $e');
       print('📚 Stack trace: $stackTrace');
->>>>>>> e0288a4 (fixes)
       _isInitialized = false;
       return false;
     }
@@ -290,23 +200,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         );
       }
 
-<<<<<<< HEAD
-      // Preprocess audio: Extract features from audio file
-
-      final inputShape = _interpreter!.getInputTensor(0).shape;
-      final input = await _preprocessAudio(audioPath, inputShape);
-
-      if (input == null) {
-        print('❌ Failed to preprocess audio file');
-        return VoiceMoodResult(
-          mood: 'neutral',
-          confidence: 0.0,
-          error: 'Failed to preprocess audio file',
-        );
-      }
-
-      // Prepare output tensor
-=======
       // Check audio file size - ensure it's not empty
       final fileSize = await audioFile.length();
       if (fileSize == 0) {
@@ -353,7 +246,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       // Get tensor types BEFORE using them
       final inputTensorType = _interpreter!.getInputTensor(0).type;
       final outputTensorType = _interpreter!.getOutputTensor(0).type;
->>>>>>> e0288a4 (fixes)
       final outputShape = _interpreter!.getOutputTensor(0).shape;
       final outputSize = outputShape.fold(1, (a, b) => a * b);
       
@@ -457,64 +349,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         return _getFallbackMood(fileSize);
       }
 
-<<<<<<< HEAD
-      // Flatten output to handle nested lists (model output is [1, 6] or similar)
-      final flatOutput = _flattenOutput(output);
-
-      if (flatOutput.isEmpty) {
-        return VoiceMoodResult(
-          mood: 'neutral',
-          confidence: 0.0,
-          error: 'Model output is empty',
-        );
-      }
-
-      // Debug: Show raw model output with index mapping
-      print('📊 Model output (${flatOutput.length} values):');
-      for (int i = 0; i < flatOutput.length; i++) {
-        final category = i < _moodCategories.length
-            ? _moodCategories[i]
-            : 'unknown[$i]';
-        print('   [$i] $category: ${flatOutput[i].toStringAsFixed(3)}');
-      }
-
-      // Process output to get mood
-      // Apply softmax to convert logits to probabilities
-      final probabilities = _extractProbabilities(flatOutput);
-
-      // Find mood with highest probability
-      String mood = 'neutral';
-      double maxProb = 0.0;
-      int maxIndex = -1;
-      for (
-        int i = 0;
-        i < flatOutput.length && i < _moodCategories.length;
-        i++
-      ) {
-        final prob = probabilities[_moodCategories[i]] ?? 0.0;
-        if (prob > maxProb) {
-          maxProb = prob;
-          mood = _moodCategories[i];
-          maxIndex = i;
-        }
-      }
-
-      // Debug: Show top 3 predictions
-      final sortedProbs = probabilities.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-      final top3 = sortedProbs
-          .take(3)
-          .map((e) => '${e.key}:${(e.value * 100).toStringAsFixed(1)}%')
-          .join(', ');
-      print(
-        '✅ Detected: $mood (index: $maxIndex, ${(maxProb * 100).toStringAsFixed(1)}%) | Top3: $top3',
-      );
-
-      return VoiceMoodResult(
-        mood: mood,
-        confidence: maxProb.clamp(0.0, 1.0),
-        allProbabilities: probabilities,
-=======
       // Process output to get mood prediction
       // Output should be probabilities for each mood category
       // Convert int8 output to double if needed
@@ -719,7 +553,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         mood: mood,
         confidence: confidence,
         allProbabilities: allProbabilities,
->>>>>>> e0288a4 (fixes)
       );
     } catch (e) {
       print('❌ Error detecting mood: $e');
@@ -785,68 +618,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       ),
     );
   }
-
-<<<<<<< HEAD
-  /// Preprocess audio file: Extract features and convert to model input format
-  ///
-  /// Steps:
-  /// 1. Load audio file using just_audio
-  /// 2. Extract PCM samples
-  /// 3. Compute Mel-spectrogram features
-  /// 4. Normalize features
-  /// 5. Reshape to model input shape [1, 128, 126, 1]
-  Future<List<dynamic>?> _preprocessAudio(
-    String audioPath,
-    List<int> inputShape,
-  ) async {
-    try {
-      // Step 1: Load audio file
-      final audioPlayer = AudioPlayer();
-      await audioPlayer.setFilePath(audioPath);
-      final duration = audioPlayer.duration ?? Duration.zero;
-
-      if (duration.inMilliseconds < 100) {
-        print('❌ Audio too short: ${duration.inMilliseconds}ms');
-        await audioPlayer.dispose();
-        return null;
-      }
-
-      // Step 2: Extract audio samples
-      final samples = await _extractAudioSamples(audioPath, duration);
-      await audioPlayer.dispose();
-
-      if (samples.isEmpty) {
-        print('❌ Failed to extract audio samples');
-        return null;
-      }
-
-      // Step 3: Compute Mel-spectrogram
-      final melSpectrogram = _computeMelSpectrogram(samples, sampleRate: 16000);
-      if (melSpectrogram.isEmpty) {
-        print('❌ Failed to compute Mel-spectrogram');
-        return null;
-      }
-
-      // Step 4: Normalize features
-      final normalized = _normalizeFeatures(melSpectrogram);
-
-      // Step 5: Reshape to model input shape [1, 128, 126, 1]
-      final inputSize = inputShape.fold(1, (a, b) => a * b);
-      final flatFeatures = _flattenMelSpectrogram(normalized, inputShape);
-
-      // Ensure we have the right size
-      if (flatFeatures.length < inputSize) {
-        flatFeatures.addAll(List.filled(inputSize - flatFeatures.length, 0.0));
-      } else if (flatFeatures.length > inputSize) {
-        flatFeatures.removeRange(inputSize, flatFeatures.length);
-      }
-
-      return _reshapeList(flatFeatures, inputShape);
-    } catch (e) {
-      print('❌ Error preprocessing audio: $e');
-      return null;
-    }
-=======
 
   /// Decode audio file (M4A) to PCM samples
   Future<List<double>?> _decodeAudioToPCM(String audioPath) async {
@@ -1187,46 +958,9 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       error: 'Failed to process audio. Please record again and speak clearly.',
       allProbabilities: {},
     );
->>>>>>> e0288a4 (fixes)
   }
 
-  /// Extract audio samples from file using platform channels for native decoding
-  ///
-  /// This uses native audio decoding (Android MediaCodec / iOS AVFoundation)
-  /// to extract real PCM samples from the audio file.
-  Future<List<double>> _extractAudioSamples(
-    String audioPath,
-    Duration duration,
-  ) async {
-    try {
-      const sampleRate = 16000;
-
-      // Call platform channel to decode audio
-      try {
-        final result = await _audioDecoderChannel.invokeMethod<List>(
-          'decodeAudioToPCM',
-          {'audioPath': audioPath, 'sampleRate': sampleRate},
-        );
-
-        if (result == null || result.isEmpty) {
-          return _generateFallbackSamples(audioPath, duration);
-        }
-
-        final samples = result.map((e) => (e as num).toDouble()).toList();
-        if (samples.isEmpty) {
-          return _generateFallbackSamples(audioPath, duration);
-        }
-
-        return samples;
-      } on PlatformException {
-        return _generateFallbackSamples(audioPath, duration);
-      } catch (_) {
-        return _generateFallbackSamples(audioPath, duration);
-      }
-    } catch (_) {
-      return _generateFallbackSamples(audioPath, duration);
-    }
-  }
+  // Removed _extractAudioSamples - using _decodeAudioToPCM instead
 
   /// Fallback method to generate synthetic samples if platform channel fails
   Future<List<double>> _generateFallbackSamples(
@@ -1336,32 +1070,11 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       });
 
       // Compute FFT (simplified - using DFT)
-      final fftResult = _computeDFT(windowedFrame);
+      final fftResult = _computeDFT(windowedFrame, windowedFrame.length);
       stft.add(fftResult);
     }
 
     return stft;
-  }
-
-  /// Compute Discrete Fourier Transform (simplified FFT)
-  List<List<double>> _computeDFT(List<double> samples) {
-    final n = samples.length;
-    final result = <List<double>>[];
-
-    for (int k = 0; k < n; k++) {
-      double real = 0.0;
-      double imag = 0.0;
-
-      for (int j = 0; j < n; j++) {
-        final angle = -2.0 * math.pi * k * j / n;
-        real += samples[j] * math.cos(angle);
-        imag += samples[j] * math.sin(angle);
-      }
-
-      result.add([real / n, imag / n]);
-    }
-
-    return result;
   }
 
   /// Create Hann window
@@ -1417,42 +1130,7 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     return melFilters;
   }
 
-  /// Convert Hz to Mel scale
-  double _hzToMel(double hz) {
-    return 2595.0 * math.log(1.0 + hz / 700.0) / math.ln10;
-  }
-
-  /// Convert Mel scale to Hz
-  double _melToHz(double mel) {
-    return 700.0 * (math.pow(10, mel / 2595.0) - 1.0);
-  }
-
-  /// Normalize features (zero mean, unit variance)
-  List<List<double>> _normalizeFeatures(List<List<double>> features) {
-    if (features.isEmpty) return features;
-
-    // Flatten all features to compute global mean and std
-    final allValues = <double>[];
-    for (final frame in features) {
-      allValues.addAll(frame);
-    }
-
-    if (allValues.isEmpty) return features;
-
-    // Compute mean and standard deviation
-    final mean = allValues.reduce((a, b) => a + b) / allValues.length;
-    final variance =
-        allValues.map((x) => math.pow(x - mean, 2)).reduce((a, b) => a + b) /
-        allValues.length;
-    final std = math.sqrt(variance);
-
-    // Normalize
-    return features.map((frame) {
-      return frame
-          .map((value) => std > 0 ? (value - mean) / std : 0.0)
-          .toList();
-    }).toList();
-  }
+  // Removed duplicate _hzToMel, _melToHz, _normalizeFeatures - using the ones defined earlier
 
   /// Flatten Mel-spectrogram to match model input shape
   List<double> _flattenMelSpectrogram(
@@ -1557,75 +1235,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     return list;
   }
 
-<<<<<<< HEAD
-  /// Flatten nested output to a simple list of doubles
-  List<double> _flattenOutput(dynamic output) {
-    if (output is List) {
-      final result = <double>[];
-      for (final item in output) {
-        if (item is List) {
-          result.addAll(_flattenOutput(item));
-        } else if (item is double) {
-          result.add(item);
-        } else if (item is int) {
-          result.add(item.toDouble());
-        } else {
-          result.add(0.0);
-        }
-      }
-      return result;
-    } else if (output is double) {
-      return [output];
-    } else if (output is int) {
-      return [output.toDouble()];
-    }
-    return [];
-  }
-
-  Map<String, double> _extractProbabilities(List<dynamic> output) {
-    final probabilities = <String, double>{};
-
-    // Ensure we have a flat list of doubles
-    final flatOutput = _flattenOutput(output);
-
-    if (flatOutput.isEmpty) {
-      // Return default probabilities if output is empty
-      for (final mood in _moodCategories) {
-        probabilities[mood] = 0.0;
-      }
-      return probabilities;
-    }
-
-    // Check if model outputs probabilities directly (values between 0-1 and sum to ~1)
-    final sumRaw = flatOutput.fold<double>(0.0, (a, b) => a + b.abs());
-    final allInRange = flatOutput.every((v) => v >= 0 && v <= 1);
-
-    if (allInRange && (sumRaw - 1.0).abs() < 0.1) {
-      // Model already outputs probabilities, use directly
-      for (
-        int i = 0;
-        i < flatOutput.length && i < _moodCategories.length;
-        i++
-      ) {
-        probabilities[_moodCategories[i]] = flatOutput[i].clamp(0.0, 1.0);
-      }
-      return probabilities;
-    }
-
-    // Apply softmax: exp(x_i) / sum(exp(x_j))
-    // First, subtract max for numerical stability
-    final maxVal = flatOutput.reduce((a, b) => a > b ? a : b);
-
-    final expValues = flatOutput.map((x) => math.exp(x - maxVal)).toList();
-    final sum = expValues.fold<double>(0.0, (a, b) => a + b);
-
-    // Calculate probabilities
-    for (int i = 0; i < flatOutput.length && i < _moodCategories.length; i++) {
-      final prob = sum > 0 ? (expValues[i] / sum).clamp(0.0, 1.0) : 0.0;
-      probabilities[_moodCategories[i]] = prob;
-    }
-
-=======
   /// Reshape a flat int list to match tensor shape (for int8)
   dynamic _reshapeListInt8(List<int> list, List<int> shape) {
     if (shape.length == 1) {
@@ -1783,8 +1392,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     final probRange = probabilities.reduce((a, b) => a > b ? a : b) - probabilities.reduce((a, b) => a < b ? a : b);
     final maxProb = probabilities.reduce((a, b) => a > b ? a : b);
     print('📊 Softmax output: probRange=$probRange, maxProb=$maxProb');
-    
->>>>>>> e0288a4 (fixes)
     return probabilities;
   }
 
