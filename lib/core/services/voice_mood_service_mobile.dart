@@ -49,7 +49,10 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       'assets/models/voice/yamnet_embeddings.tflite';
   static const String _labelMapPath = 'assets/models/voice/label_map.json';
 
-  // Mood categories loaded from label_map.json (only the 6 supported moods)
+  // Mood categories loaded from label_map.json.
+  // IMPORTANT: This list MUST match the classifier model output index order.
+  // We keep non-supported labels (e.g., calm/disgust/unknown) so we can map them
+  // to the closest supported mood later (Option C).
   List<String> _moodCategories = [
     'angry',
     'calm',
@@ -59,6 +62,7 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     'neutral',
     'sad',
     'surprise',
+    'unknown',
   ];
 
   // Temporal smoothing: Store last 5 predictions for majority vote
@@ -234,22 +238,34 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       final Map<String, dynamic> labelMap = json.decode(labelMapJson);
       
       if (labelMap.containsKey('classes') && labelMap['classes'] is List) {
-        final allCategories = List<String>.from(labelMap['classes']);
-        // Filter to only include the 6 supported moods, remove "unknown", "calm", "disgust"
-        _moodCategories = allCategories.where((mood) => _supportedMoods.contains(mood)).toList();
-        // Ensure all 6 supported moods are present
-        for (final mood in _supportedMoods) {
-          if (!_moodCategories.contains(mood)) {
-            _moodCategories.add(mood);
+        // Keep the original order from label_map.json because it must align with model output indices.
+        final raw = List<String>.from(labelMap['classes'])
+            .map((e) => e.toString().trim().toLowerCase())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        // De-duplicate while preserving order
+        final seen = <String>{};
+        final ordered = <String>[];
+        for (final m in raw) {
+          if (!seen.contains(m)) {
+            seen.add(m);
+            ordered.add(m);
           }
         }
-        _moodCategories.sort(); // Sort for consistency
-        print('✅ Loaded ${_moodCategories.length} mood categories from label_map.json (filtered to supported moods only)');
-        print('📋 Supported moods: $_moodCategories');
+
+        _moodCategories = ordered;
+        print('✅ Loaded ${_moodCategories.length} mood categories from label_map.json (kept output order)');
+        print('📋 Model output labels: $_moodCategories');
+
+        // Warn if supported moods are missing (we don't auto-add because that would break index alignment)
+        final missing = _supportedMoods.where((m) => !_moodCategories.contains(m)).toList();
+        if (missing.isNotEmpty) {
+          print('⚠️ WARNING: label_map.json is missing supported moods: $missing');
+        }
       } else {
         print('⚠️ Label map format unexpected, using default categories');
-        // Ensure default categories only include supported moods
-        _moodCategories = List<String>.from(_supportedMoods);
+        // Keep default categories (includes calm/disgust/unknown) to preserve index assumptions.
       }
     } catch (e) {
       print('⚠️ Error loading label map, using default categories: $e');
@@ -495,13 +511,11 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       // Apply softmax to get probabilities
       final probs = _applySoftmax(logits);
 
-      // Map to mood categories (only supported moods)
+      // Map to mood categories (ALL labels, preserving model output mapping)
       final moodProbs = <String, double>{};
       for (int i = 0; i < _moodCategories.length && i < probs.length; i++) {
         final mood = _moodCategories[i];
-        if (_supportedMoods.contains(mood)) {
-          moodProbs[mood] = probs[i];
-        }
+        moodProbs[mood] = probs[i];
       }
 
       print('📊 Classifier probabilities: ${moodProbs.map((k, v) => MapEntry(k, (v * 100).toStringAsFixed(1) + '%'))}');
@@ -511,6 +525,51 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       print('📚 Stack trace: $stackTrace');
       return null;
     }
+  }
+
+  /// Pick the best supported mood from a probability map.
+  String _bestSupportedMood(Map<String, double> probs) {
+    String best = 'neutral';
+    double bestP = -1.0;
+    for (final m in _supportedMoods) {
+      final p = probs[m] ?? 0.0;
+      if (p > bestP) {
+        bestP = p;
+        best = m;
+      }
+    }
+    return best;
+  }
+
+  /// Option C mapping: if classifier predicts calm/disgust/unknown (or any unsupported),
+  /// map it to the closest among the 6 supported moods.
+  String _mapNonSupportedToSupported(String predicted, Map<String, double> probs) {
+    final p = predicted.toLowerCase();
+
+    // If already supported, return as-is.
+    if (_supportedMoods.contains(p)) return p;
+
+    // Calm is closest to neutral/sad (choose whichever is stronger).
+    if (p == 'calm') {
+      final neutralP = probs['neutral'] ?? 0.0;
+      final sadP = probs['sad'] ?? 0.0;
+      final pick = neutralP >= sadP ? 'neutral' : 'sad';
+      // If both are extremely low, fall back to best supported.
+      if ((probs[pick] ?? 0.0) < 0.05) return _bestSupportedMood(probs);
+      return pick;
+    }
+
+    // Disgust is closest to angry/fear (choose whichever is stronger).
+    if (p == 'disgust') {
+      final angryP = probs['angry'] ?? 0.0;
+      final fearP = probs['fear'] ?? 0.0;
+      final pick = angryP >= fearP ? 'angry' : 'fear';
+      if ((probs[pick] ?? 0.0) < 0.05) return _bestSupportedMood(probs);
+      return pick;
+    }
+
+    // Unknown or any other non-supported label → best supported.
+    return _bestSupportedMood(probs);
   }
 
   /// Extract audio features from PCM samples (pitch, energy, spectral features)
@@ -912,9 +971,15 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       final bestMood = sortedMoods[0].key;
       final maxProb = sortedMoods[0].value;
       
-      // Get second highest probability (if available)
-      final secondMood = sortedMoods.length > 1 ? sortedMoods[1].key : null;
-      final secondProb = sortedMoods.length > 1 ? sortedMoods[1].value : 0.0;
+      // Compute supported top-2 (used for repetition avoidance + happy dominance guard)
+      final supportedEntries = _supportedMoods
+          .map((m) => MapEntry(m, moodProbs[m] ?? 0.0))
+          .toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      final bestSupportedMood = supportedEntries.isNotEmpty ? supportedEntries[0].key : 'neutral';
+      final bestSupportedProb = supportedEntries.isNotEmpty ? supportedEntries[0].value : 0.0;
+      final secondSupportedMood = supportedEntries.length > 1 ? supportedEntries[1].key : null;
+      final secondSupportedProb = supportedEntries.length > 1 ? supportedEntries[1].value : 0.0;
 
       // If model confidence is very low (< 15%), use feature-based detection
       if (maxProb < 0.15) {
@@ -925,21 +990,38 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         return featureBasedMood;
       }
 
-      // Ensure bestMood is one of the supported moods
-      String finalMood = _supportedMoods.contains(bestMood) ? bestMood : 'neutral';
-      double finalConfidence = maxProb;
+      // Option C: Map calm/disgust/unknown (or any unsupported) to the closest supported mood.
+      String finalMood = _mapNonSupportedToSupported(bestMood, moodProbs);
+      // Confidence should be the probability of the final (mapped) mood.
+      double finalConfidence = moodProbs[finalMood] ?? 0.0;
+
+      // If the model is confident in non-supported but supported are super low, prefer the best supported anyway.
+      if (finalConfidence < 0.08 && bestSupportedProb > finalConfidence) {
+        finalMood = bestSupportedMood;
+        finalConfidence = bestSupportedProb;
+      }
+
+      // Happy dominance guard: if happy wins but is not clearly separated, try 2nd supported or features.
+      if (finalMood == 'happy' &&
+          secondSupportedMood != null &&
+          (finalConfidence < 0.55 || (finalConfidence - secondSupportedProb) < 0.10) &&
+          secondSupportedProb > 0.12) {
+        print('⚠️ "happy" not strongly separated (p=${(finalConfidence * 100).toStringAsFixed(1)}%, second=${(secondSupportedProb * 100).toStringAsFixed(1)}%) - using second supported "$secondSupportedMood"');
+        finalMood = secondSupportedMood;
+        finalConfidence = secondSupportedProb;
+      }
 
       // 🔹 Avoid always returning the same mood - check if this mood appears too often
       final moodCount = _predictionHistory.where((m) => m == finalMood).length;
       final isMoodTooCommon = moodCount >= 2; // If 2+ out of 5 are the same mood
       
       // If the same mood is appearing too often, use second highest probability instead
-      if (isMoodTooCommon && secondMood != null && _supportedMoods.contains(secondMood) && secondMood != finalMood) {
+      if (isMoodTooCommon && secondSupportedMood != null && secondSupportedMood != finalMood) {
         // Check if second mood has reasonable confidence (> 8%)
-        if (secondProb > 0.08) {
-          print('⚠️ "$finalMood" appears too often in history ($moodCount/$_historySize) - using second highest "${secondMood}" (${(secondProb * 100).toStringAsFixed(1)}%) instead');
-          finalMood = secondMood;
-          finalConfidence = secondProb;
+        if (secondSupportedProb > 0.08) {
+          print('⚠️ "$finalMood" appears too often in history ($moodCount/$_historySize) - using second supported "$secondSupportedMood" (${(secondSupportedProb * 100).toStringAsFixed(1)}%) instead');
+          finalMood = secondSupportedMood;
+          finalConfidence = secondSupportedProb;
     } else {
           // If second mood confidence is too low, use feature-based detection
           print('⚠️ "$finalMood" appears too often but second mood confidence too low - using feature-based detection');
@@ -956,11 +1038,11 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       if (finalMood == 'neutral') {
         final neutralCount = _predictionHistory.where((m) => m == 'neutral').length;
         // If neutral appears 2+ times, always try to use second highest or feature-based
-        if (neutralCount >= 2 && secondMood != null && _supportedMoods.contains(secondMood) && secondMood != 'neutral') {
-          if (secondProb > 0.08) {
-            print('⚠️ "neutral" appears too often ($neutralCount/$_historySize) - using second highest "${secondMood}" (${(secondProb * 100).toStringAsFixed(1)}%)');
-            finalMood = secondMood;
-            finalConfidence = secondProb;
+        if (neutralCount >= 2 && secondSupportedMood != null && secondSupportedMood != 'neutral') {
+          if (secondSupportedProb > 0.08) {
+            print('⚠️ "neutral" appears too often ($neutralCount/$_historySize) - using second supported "$secondSupportedMood" (${(secondSupportedProb * 100).toStringAsFixed(1)}%)');
+            finalMood = secondSupportedMood;
+            finalConfidence = secondSupportedProb;
     } else {
             // Use feature-based detection to avoid neutral
             print('⚠️ "neutral" appears too often - using feature-based detection to avoid repetition');
@@ -976,8 +1058,8 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
 
       // 🔹 6. Emotion Bias Protection
       // If "sad" is predicted but confidence < 0.6 → use feature-based detection
-      if (finalMood == 'sad' && maxProb < _sadConfidenceThreshold) {
-        print('⚠️ "sad" predicted with low confidence (${(maxProb * 100).toStringAsFixed(1)}% < ${(_sadConfidenceThreshold * 100).toStringAsFixed(0)}%) - using feature-based detection');
+      if (finalMood == 'sad' && finalConfidence < _sadConfidenceThreshold) {
+        print('⚠️ "sad" predicted with low confidence (${(finalConfidence * 100).toStringAsFixed(1)}% < ${(_sadConfidenceThreshold * 100).toStringAsFixed(0)}%) - using feature-based detection');
         final audioFeatures = _extractAudioFeatures(processedSamples);
         final featureBasedMood = _detectMoodFromFeatures(audioFeatures);
         print('✅ Feature-based mood detection: ${featureBasedMood.mood} (confidence: ${(featureBasedMood.confidence * 100).toStringAsFixed(1)}%)');
@@ -992,10 +1074,10 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       
       // If the same mood appears in all recent detections, use second highest instead
       if (_recentMoods.length == _recentMoodsHistory && _recentMoods.every((m) => m == finalMood)) {
-        if (secondMood != null && _supportedMoods.contains(secondMood) && secondMood != finalMood && secondProb > 0.08) {
-          print('⚠️ Same mood "$finalMood" detected ${_recentMoodsHistory} times in a row - using second highest "${secondMood}" (${(secondProb * 100).toStringAsFixed(1)}%) for variation');
-          finalMood = secondMood;
-          finalConfidence = secondProb;
+        if (secondSupportedMood != null && secondSupportedMood != finalMood && secondSupportedProb > 0.08) {
+          print('⚠️ Same mood "$finalMood" detected ${_recentMoodsHistory} times in a row - using second supported "$secondSupportedMood" (${(secondSupportedProb * 100).toStringAsFixed(1)}%) for variation');
+          finalMood = secondSupportedMood;
+          finalConfidence = secondSupportedProb;
           // Update recent moods
           _recentMoods[_recentMoods.length - 1] = finalMood;
     } else {

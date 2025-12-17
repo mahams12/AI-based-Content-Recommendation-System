@@ -2,37 +2,31 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/content_model.dart';
 import 'api_service.dart';
+// Import API keys if config file exists (gitignored)
+// ignore: unused_import
+import '../config/api_keys.dart' if (dart.library.io) '../config/api_keys.dart';
 
 class OpenAIService {
-  // API key should be set via environment variable
-  // Run with: flutter run --dart-define=OPENAI_API_KEY=your-key-here
-  // Or create lib/core/config/api_keys.dart (see README_API_KEYS.md)
+  // API key configuration priority:
+  // 1. Environment variable (--dart-define=OPENAI_API_KEY=...)
+  // 2. Local config file (lib/core/config/api_keys.dart) - gitignored
+  // 3. Empty string (will show error)
   static String get _apiKey {
-    // Try to get from environment variable first (set via --dart-define)
+    // Priority 1: Try to get from environment variable first
     const String envKey = String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
     if (envKey.isNotEmpty && envKey != 'YOUR_OPENAI_API_KEY_HERE') {
       return envKey;
     }
     
-    // For local development, you can create lib/core/config/api_keys.dart
-    // This file is gitignored and not committed
-    // Uncomment the line below and create the file if needed:
-    // return _getApiKeyFromConfig();
-    
-    // Return empty if no key configured (will show error message)
-    return '';
+    // Priority 2: Try to get from local config file (gitignored)
+    try {
+      // This will work if api_keys.dart exists locally
+      return ApiKeys.openAiApiKey;
+    } catch (e) {
+      // Config file doesn't exist - return empty
+      return '';
+    }
   }
-  
-  // Uncomment this method and create api_keys.dart file if you want to use config file
-  // static String _getApiKeyFromConfig() {
-  //   try {
-  //     // ignore: avoid_relative_lib_imports
-  //     // return ApiKeys.openAiApiKey;
-  //   } catch (e) {
-  //     return '';
-  //   }
-  //   return '';
-  // }
   
   static const String _baseUrl = 'https://api.openai.com/v1/chat/completions';
   
