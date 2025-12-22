@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/models/chat_message.dart';
+import '../../../../core/models/content_model.dart';
+import '../../../../core/services/history_service.dart';
 
 class ChatMessageBubble extends StatefulWidget {
   final ChatMessage message;
@@ -27,6 +29,7 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  final HistoryService _historyService = HistoryService();
 
   @override
   void initState() {
@@ -272,22 +275,56 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble>
 
       // Add clickable URL
       final url = match.group(0)!;
-      spans.add(TextSpan(
-        text: url,
-        style: GoogleFonts.inter(
-          fontSize: 15,
-          color: AppTheme.primaryColor,
-          height: 1.4,
-          decoration: TextDecoration.underline,
+      spans.add(
+        TextSpan(
+          text: url,
+          style: GoogleFonts.inter(
+            fontSize: 15,
+            color: AppTheme.primaryColor,
+            height: 1.4,
+            decoration: TextDecoration.underline,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () async {
+              try {
+                final uri = Uri.parse(url);
+                
+                // Add to history when link is clicked
+                _addUrlToHistory(url);
+                
+                bool launched = false;
+
+                // First try opening in the external app (Spotify / YouTube / browser)
+                try {
+                  launched = await launchUrl(
+                    uri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                } catch (e) {
+                  // Fallback below
+                  // ignore: avoid_print
+                  print('⚠️ Chat link external launch error for $url: $e');
+                }
+
+                // Quick fallback to platform default if external app launch failed
+                if (!launched) {
+                  try {
+                    await launchUrl(
+                      uri,
+                      mode: LaunchMode.platformDefault,
+                    );
+                  } catch (e) {
+                    // ignore: avoid_print
+                    print('❌ Chat link platform launch error for $url: $e');
+                  }
+                }
+              } catch (e) {
+                // ignore: avoid_print
+                print('❌ Chat link parse error for $url: $e');
+              }
+            },
         ),
-        recognizer: TapGestureRecognizer()
-          ..onTap = () async {
-            final uri = Uri.parse(url);
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            }
-          },
-      ));
+      );
 
       lastEnd = match.end;
     }
@@ -307,6 +344,86 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble>
     return RichText(
       text: TextSpan(children: spans),
     );
+  }
+
+  /// Add URL to history when clicked from chat
+  Future<void> _addUrlToHistory(String url) async {
+    try {
+      await _historyService.init();
+      
+      // Parse URL to determine platform and create ContentItem
+      ContentType platform = ContentType.youtube;
+      ContentCategory category = ContentCategory.video;
+      String title = 'Content';
+      String id = url;
+      
+      if (url.contains('spotify.com')) {
+        platform = ContentType.spotify;
+        category = ContentCategory.music;
+        // Try to extract track name from search URL
+        final searchMatch = RegExp(r'search/([^?&]+)').firstMatch(url);
+        if (searchMatch != null) {
+          title = Uri.decodeComponent(searchMatch.group(1)!.replaceAll('+', ' '));
+        } else {
+          title = 'Spotify Track';
+        }
+        // Extract track ID if possible
+        final trackMatch = RegExp(r'/track/([a-zA-Z0-9]+)').firstMatch(url);
+        if (trackMatch != null) {
+          id = trackMatch.group(1)!;
+        }
+      } else if (url.contains('youtube.com') || url.contains('youtu.be')) {
+        platform = ContentType.youtube;
+        category = ContentCategory.video;
+        // Extract video ID
+        final videoMatch = RegExp(r'(?:v=|/)([a-zA-Z0-9_-]{11})').firstMatch(url);
+        if (videoMatch != null) {
+          id = videoMatch.group(1)!;
+          title = 'YouTube Video';
+        } else {
+          // For search URLs, try to extract query
+          final searchMatch = RegExp(r'search_query=([^&]+)').firstMatch(url);
+          if (searchMatch != null) {
+            title = Uri.decodeComponent(searchMatch.group(1)!.replaceAll('+', ' '));
+          } else {
+            title = 'YouTube Video';
+          }
+        }
+      } else if (url.contains('themoviedb.org')) {
+        platform = ContentType.tmdb;
+        category = ContentCategory.movie;
+        // Extract movie ID
+        final movieMatch = RegExp(r'/movie/(\d+)').firstMatch(url);
+        if (movieMatch != null) {
+          id = movieMatch.group(1)!;
+          title = 'Movie';
+        } else {
+          // For search URLs
+          final searchMatch = RegExp(r'query=([^&]+)').firstMatch(url);
+          if (searchMatch != null) {
+            title = Uri.decodeComponent(searchMatch.group(1)!.replaceAll('+', ' '));
+          } else {
+            title = 'Movie';
+          }
+        }
+      }
+      
+      final contentItem = ContentItem(
+        id: id,
+        title: title,
+        description: 'Opened from chat',
+        thumbnailUrl: '',
+        platform: platform,
+        category: category,
+        externalUrl: url,
+      );
+      
+      await _historyService.addToHistory(contentItem);
+      print('✅ Added chat link to history: $url');
+    } catch (e) {
+      print('⚠️ Could not add chat link to history: $e');
+      // Don't block the user if history fails
+    }
   }
 }
 

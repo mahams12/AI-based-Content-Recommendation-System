@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../models/content_model.dart';
 import 'api_service.dart';
@@ -74,6 +75,8 @@ class OpenAIService {
   Future<List<ContentItem>> getContentRecommendations({
     required String mood,
     required String contentType, // 'videos', 'songs', 'movies'
+    int limit = 10,
+    List<String> excludeIds = const [],
   }) async {
     try {
       // Get content from API service
@@ -85,7 +88,11 @@ class OpenAIService {
           allContent.addAll(result.data!);
         }
       } else if (contentType == 'songs' || contentType == 'music') {
-        final result = await _apiService.getSpotifyFeaturedPlaylists();
+        // Use a large, diverse Spotify pool so we can keep showing
+        // different tracks/playlists over multiple requests.
+        final result = await _apiService.getUnlimitedSpotifyContent(
+          maxResults: limit * 3,
+        );
         if (result.isSuccess && result.data != null) {
           allContent.addAll(result.data!);
         }
@@ -96,13 +103,44 @@ class OpenAIService {
         }
       }
 
-      // Use OpenAI to filter and rank based on mood
       if (allContent.isEmpty) {
         return [];
       }
 
-      // Take top 10 recommendations
-      return allContent.take(10).toList();
+      // Remove duplicates by ID
+      final uniqueMap = <String, ContentItem>{};
+      for (final item in allContent) {
+        if (item.id.isNotEmpty) {
+          uniqueMap[item.id] = item;
+        }
+      }
+      var uniqueContent = uniqueMap.values.toList();
+
+      // Exclude content already shown in this chat session
+      if (excludeIds.isNotEmpty) {
+        uniqueContent = uniqueContent
+            .where((item) => !excludeIds.contains(item.id))
+            .toList();
+      }
+
+      // Filter out obvious "premium" style items so suggestions work for everyone
+      const premiumKeywords = ['premium', 'plus', 'vip', 'pro'];
+      final filteredContent = uniqueContent.where((item) {
+        final title = item.title.toLowerCase();
+        final description = item.description.toLowerCase();
+        return !premiumKeywords.any(
+          (word) => title.contains(word) || description.contains(word),
+        );
+      }).toList();
+
+      // If our filters removed everything, fall back to the unfiltered list
+      var finalPool = filteredContent.isNotEmpty ? filteredContent : uniqueContent;
+
+      // Shuffle so that results are different on each call
+      finalPool.shuffle(Random());
+
+      // Take the requested number of recommendations
+      return finalPool.take(limit).toList();
     } catch (e) {
       print('❌ Error getting content recommendations: $e');
       return [];
@@ -114,15 +152,21 @@ class OpenAIService {
     required String mood,
     required String contentType,
     required List<ContentItem> content,
+    bool includeLinks = true,
+    int maxItems = 5,
+    bool namesOnly = false,
   }) {
     if (content.isEmpty) {
       return 'I couldn\'t find any ${contentType} recommendations for your ${mood} mood. Please try again!';
     }
 
+    final withLinks = includeLinks && !namesOnly;
     final buffer = StringBuffer();
-    buffer.writeln('Great! Based on your ${mood} mood, here are some ${contentType} recommendations:\n');
+    buffer.writeln(
+      'Great! Based on your ${mood} mood, here are some ${contentType} recommendations:\n',
+    );
 
-    for (int i = 0; i < content.length && i < 5; i++) {
+    for (int i = 0; i < content.length && i < maxItems; i++) {
       final item = content[i];
       buffer.writeln('${i + 1}. **${item.title}**');
       
@@ -130,23 +174,25 @@ class OpenAIService {
         buffer.writeln('   ${item.description.substring(0, item.description.length > 100 ? 100 : item.description.length)}...');
       }
 
-      // Add link based on content type
-      if (item.externalUrl != null && item.externalUrl!.isNotEmpty) {
-        buffer.writeln('   🔗 ${item.externalUrl}');
-      } else if (item.id.isNotEmpty) {
-        if (contentType == 'videos' || contentType == 'youtube') {
-          buffer.writeln('   🔗 https://www.youtube.com/watch?v=${item.id}');
-        } else if (contentType == 'songs' || contentType == 'music') {
-          buffer.writeln('   🔗 https://open.spotify.com/track/${item.id}');
-        } else if (contentType == 'movies') {
-          buffer.writeln('   🔗 https://www.themoviedb.org/movie/${item.id}');
+      // Add link based on content type (if requested)
+      if (withLinks) {
+        if (item.externalUrl != null && item.externalUrl!.isNotEmpty) {
+          buffer.writeln('   🔗 ${item.externalUrl}');
+        } else if (item.id.isNotEmpty) {
+          if (contentType == 'videos' || contentType == 'youtube') {
+            buffer.writeln('   🔗 https://www.youtube.com/watch?v=${item.id}');
+          } else if (contentType == 'songs' || contentType == 'music') {
+            buffer.writeln('   🔗 https://open.spotify.com/track/${item.id}');
+          } else if (contentType == 'movies') {
+            buffer.writeln('   🔗 https://www.themoviedb.org/movie/${item.id}');
+          }
         }
       }
       buffer.writeln('');
     }
 
-    if (content.length > 5) {
-      buffer.writeln('... and ${content.length - 5} more recommendations!');
+    if (content.length > maxItems) {
+      buffer.writeln('... and ${content.length - maxItems} more recommendations!');
     }
 
     return buffer.toString();

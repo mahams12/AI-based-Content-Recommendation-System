@@ -217,61 +217,65 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
     
     try {
       // Fetch content based on selected category
+      // Use the \"unlimited\" APIs so we have a large pool and can
+      // build playlists of 20–30+ items without repeating.
       if (_selectedCategory == 'all') {
-        // Fetch from all categories - 10 items each to ensure we have enough
-        print('📺 Fetching YouTube trending...');
-        final youtubeResult = await _apiService.getYouTubeTrending(maxResults: 10);
-        if (youtubeResult.isSuccess) {
+        print('📺 Fetching extended YouTube content...');
+        final youtubeResult =
+            await _apiService.getUnlimitedYouTubeContent(maxResults: 60);
+        if (youtubeResult.isSuccess && youtubeResult.data != null) {
           allContent.addAll(youtubeResult.data!);
           print('✅ Fetched ${youtubeResult.data!.length} YouTube videos');
         } else {
           print('⚠️ YouTube fetch failed: ${youtubeResult.error}');
         }
-        
-        print('🎵 Fetching Spotify playlists...');
-        final spotifyResult = await _apiService.getSpotifyFeaturedPlaylists(limit: 10);
-        if (spotifyResult.isSuccess) {
+
+        print('🎵 Fetching extended Spotify content...');
+        final spotifyResult =
+            await _apiService.getUnlimitedSpotifyContent(maxResults: 60);
+        if (spotifyResult.isSuccess && spotifyResult.data != null) {
           allContent.addAll(spotifyResult.data!);
-          print('✅ Fetched ${spotifyResult.data!.length} Spotify tracks');
+          print('✅ Fetched ${spotifyResult.data!.length} Spotify items');
         } else {
           print('⚠️ Spotify fetch failed: ${spotifyResult.error}');
         }
-        
-        print('🎬 Fetching TMDB popular...');
-        final tmdbResult = await _apiService.getTMDBPopular(type: 'movie', page: 1);
-        if (tmdbResult.isSuccess) {
-          allContent.addAll(tmdbResult.data!.take(10).toList());
-          print('✅ Fetched ${tmdbResult.data!.length} TMDB movies');
+
+        print('🎬 Fetching extended TMDB content...');
+        final tmdbResult =
+            await _apiService.getUnlimitedTMDBContent(maxResults: 60);
+        if (tmdbResult.isSuccess && tmdbResult.data != null) {
+          allContent.addAll(tmdbResult.data!);
+          print('✅ Fetched ${tmdbResult.data!.length} TMDB items');
         } else {
           print('⚠️ TMDB fetch failed: ${tmdbResult.error}');
         }
       } else if (_selectedCategory == 'youtube') {
-        // Fetch YouTube videos only - 15 items to have enough for filtering
-        print('📺 Fetching YouTube trending...');
-        final youtubeResult = await _apiService.getYouTubeTrending(maxResults: 15);
-        if (youtubeResult.isSuccess) {
+        print('📺 Fetching extended YouTube content...');
+        final youtubeResult =
+            await _apiService.getUnlimitedYouTubeContent(maxResults: 60);
+        if (youtubeResult.isSuccess && youtubeResult.data != null) {
           allContent.addAll(youtubeResult.data!);
           print('✅ Fetched ${youtubeResult.data!.length} YouTube videos');
         } else {
           print('⚠️ YouTube fetch failed: ${youtubeResult.error}');
         }
       } else if (_selectedCategory == 'music') {
-        // Fetch Spotify songs only - 15 items
-        print('🎵 Fetching Spotify playlists...');
-        final spotifyResult = await _apiService.getSpotifyFeaturedPlaylists(limit: 15);
-        if (spotifyResult.isSuccess) {
+        print('🎵 Fetching extended Spotify content...');
+        final spotifyResult =
+            await _apiService.getUnlimitedSpotifyContent(maxResults: 60);
+        if (spotifyResult.isSuccess && spotifyResult.data != null) {
           allContent.addAll(spotifyResult.data!);
-          print('✅ Fetched ${spotifyResult.data!.length} Spotify tracks');
+          print('✅ Fetched ${spotifyResult.data!.length} Spotify items');
         } else {
           print('⚠️ Spotify fetch failed: ${spotifyResult.error}');
         }
       } else if (_selectedCategory == 'movies') {
-        // Fetch TMDB movies only - 15 items
-        print('🎬 Fetching TMDB popular...');
-        final tmdbResult = await _apiService.getTMDBPopular(type: 'movie', page: 1);
-        if (tmdbResult.isSuccess) {
-          allContent.addAll(tmdbResult.data!.take(15).toList());
-          print('✅ Fetched ${tmdbResult.data!.length} TMDB movies');
+        print('🎬 Fetching extended TMDB content...');
+        final tmdbResult =
+            await _apiService.getUnlimitedTMDBContent(maxResults: 60);
+        if (tmdbResult.isSuccess && tmdbResult.data != null) {
+          allContent.addAll(tmdbResult.data!);
+          print('✅ Fetched ${tmdbResult.data!.length} TMDB items');
         } else {
           print('⚠️ TMDB fetch failed: ${tmdbResult.error}');
         }
@@ -282,32 +286,40 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
       // Filter by mood using MoodBasedFilteringService
       List<ContentItem> filteredContent;
       if (mood == 'all') {
-        // For "all" mood, return a mix of content (2-3 per category if "all" selected)
+        // For \"all\" mood, just take a larger slice from each platform.
         if (_selectedCategory == 'all') {
-          // Ensure we have 2-3 items from each category
-          final youtubeItems = allContent.where((item) => item.platform == ContentType.youtube).take(3).toList();
-          final spotifyItems = allContent.where((item) => item.platform == ContentType.spotify).take(3).toList();
-          final tmdbItems = allContent.where((item) => item.platform == ContentType.tmdb).take(3).toList();
+          final youtubeItems = allContent
+              .where((item) => item.platform == ContentType.youtube)
+              .take(10)
+              .toList();
+          final spotifyItems = allContent
+              .where((item) => item.platform == ContentType.spotify)
+              .take(10)
+              .toList();
+          final tmdbItems = allContent
+              .where((item) => item.platform == ContentType.tmdb)
+              .take(10)
+              .toList();
           filteredContent = [...youtubeItems, ...spotifyItems, ...tmdbItems];
         } else {
-          // For specific category, return 2-3 items
-          filteredContent = allContent.take(3).toList();
+          // For specific category, return 20–30 items
+          filteredContent = allContent.take(30).toList();
         }
       } else {
-        // Use mood-based filtering service
+        // Use mood-based filtering service for a larger playlist
         print('🎯 Filtering content by mood: $mood');
         filteredContent = await _moodFilterService.filterContentByMood(
           content: allContent,
           mood: mood,
-          maxResults: _selectedCategory == 'all' ? 9 : 3, // 3 per category if "all", else 3 total
+          maxResults: 30,
         );
         print('✅ Filtered to ${filteredContent.length} items');
       }
       
-      // Ensure we have at least some content
+      // Ensure we have at least some content (fallback)
       if (filteredContent.isEmpty && allContent.isNotEmpty) {
         print('⚠️ Mood filtering returned empty, using top items');
-        filteredContent = allContent.take(_selectedCategory == 'all' ? 6 : 3).toList();
+        filteredContent = allContent.take(30).toList();
       }
       
       print('🎉 Final playlist size: ${filteredContent.length}');

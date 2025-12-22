@@ -97,27 +97,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
   }
 
-  Future<void> _clearAllFavorites() async {
-    try {
-      await _favoritesService.clearAllFavorites();
-      setState(() {
-        _favoriteItems.clear();
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Favorites cleared'),
-          backgroundColor: Color(0xFF667eea),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error clearing favorites: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 
   void _openContent(ContentItem item) async {
     await showDialog(
@@ -181,14 +160,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 ),
               ),
             ),
-            actions: [
-              if (_favoriteItems.isNotEmpty)
-                IconButton(
-                  onPressed: _clearAllFavorites,
-                  icon: const Icon(Icons.clear_all_rounded),
-                  tooltip: 'Clear All Favorites',
-                ),
-            ],
           ),
 
           // Content
@@ -360,15 +331,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   ),
                 ),
                 
-                // Remove Button
+                // Heart Icon - Click to unfavorite
                 IconButton(
                   onPressed: () => _removeFromFavorites(item.id),
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.favorite,
-                    color: Colors.red[400],
-                    size: 20,
+                    color: Colors.red,
+                    size: 24,
                   ),
-                  tooltip: 'Remove from Favorites',
+                  tooltip: 'Click to unfavorite',
                 ),
               ],
             ),

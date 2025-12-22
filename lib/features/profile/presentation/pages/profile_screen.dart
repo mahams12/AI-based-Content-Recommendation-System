@@ -122,11 +122,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
+    // Redirect to login if not signed in - don't show "Not Signed In" screen
+    authState.whenData((user) {
+      if (user == null && mounted) {
+        // User is not signed in, redirect to login immediately
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/login',
+              (route) => false,
+            );
+          }
+        });
+      }
+    });
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: authState.when(
-          data: (user) => user != null ? _buildProfileContent(context, ref, user) : _buildNotLoggedIn(context),
+          data: (user) {
+            if (user == null) {
+              // Show loading while redirecting to login
+              return const Center(child: CircularProgressIndicator());
+            }
+            return _buildProfileContent(context, ref, user);
+          },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) => _buildError(context, error.toString()),
         ),
@@ -340,46 +361,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,
-      ),
-    );
-  }
-
-  Widget _buildNotLoggedIn(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.defaultPadding),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.person_outline,
-              size: 80,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Not Signed In',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Sign in to access your profile and personalized recommendations.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.grey[600],
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pushNamed('/login');
-              },
-              child: const Text('Sign In'),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -748,11 +729,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 await StorageService.setBool('has_completed_welcome', false);
                 await StorageService.remove('user_mood_data');
                 
-                // Navigate to login screen
+                // Navigate directly to login screen - remove all previous routes
                 if (context.mounted) {
                   Navigator.of(context).pushNamedAndRemoveUntil(
                     '/login',
-                    (route) => false,
+                    (route) => false, // Remove all previous routes
                   );
                 }
               } catch (e) {

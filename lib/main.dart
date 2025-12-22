@@ -139,6 +139,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       routes: {
         '/main': (context) => const MainNavigationScreen(),
         '/login': (context) => const LoginScreen(),
+        '/welcome': (context) => const WelcomeScreen(),
       },
     );
   }

@@ -26,6 +26,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _loadHistory();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload history when screen becomes visible
+    _loadHistory();
+  }
+
   Future<void> _loadHistory() async {
     setState(() {
       _isLoading = true;
@@ -177,14 +184,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
             ),
-            actions: [
-              if (_historyItems.isNotEmpty)
-                IconButton(
-                  onPressed: _clearAllHistory,
-                  icon: const Icon(Icons.clear_all_rounded),
-                  tooltip: 'Clear All History',
-                ),
-            ],
           ),
 
           // Content

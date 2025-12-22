@@ -70,7 +70,7 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
   static const int _historySize = 5;
   static const int _majorityThreshold = 3; // Need ≥3 votes to return a mood
 
-  // Supported moods (final labels) - excluding calm, disgust, unknown from classifier
+  // Supported moods (final labels) - including all detected moods
   static const List<String> _supportedMoods = [
     'angry',
     'happy',
@@ -78,6 +78,8 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     'neutral',
     'fear',
     'surprise',
+    'calm',
+    'disgust',
   ];
 
   // Audio preprocessing constants
@@ -160,12 +162,12 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         print('📊 Output tensor type: ${_interpreter!.getOutputTensor(0).type}');
         print('📋 Mood categories (${_moodCategories.length}): $_moodCategories');
         
-        // Verify all 6 supported moods are present (ignore "unknown", "calm", "disgust")
+        // Verify all supported moods are present (ignore "unknown")
         final missingSupportedMoods = _supportedMoods.where((mood) => !_moodCategories.contains(mood)).toList();
         if (missingSupportedMoods.isNotEmpty) {
           print('⚠️ WARNING: Missing supported moods: $missingSupportedMoods');
         } else {
-          print('✅ All 6 supported moods are present in the model: $_supportedMoods');
+          print('✅ All ${_supportedMoods.length} supported moods are present in the model: $_supportedMoods');
         }
         
         // Test classifier with dummy input to verify it works
@@ -541,32 +543,13 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     return best;
   }
 
-  /// Option C mapping: if classifier predicts calm/disgust/unknown (or any unsupported),
-  /// map it to the closest among the 6 supported moods.
+  /// Option C mapping: if classifier predicts unknown (or any unsupported),
+  /// map it to the closest among the supported moods.
   String _mapNonSupportedToSupported(String predicted, Map<String, double> probs) {
     final p = predicted.toLowerCase();
 
-    // If already supported, return as-is.
+    // If already supported (including calm and disgust), return as-is.
     if (_supportedMoods.contains(p)) return p;
-
-    // Calm is closest to neutral/sad (choose whichever is stronger).
-    if (p == 'calm') {
-      final neutralP = probs['neutral'] ?? 0.0;
-      final sadP = probs['sad'] ?? 0.0;
-      final pick = neutralP >= sadP ? 'neutral' : 'sad';
-      // If both are extremely low, fall back to best supported.
-      if ((probs[pick] ?? 0.0) < 0.05) return _bestSupportedMood(probs);
-      return pick;
-    }
-
-    // Disgust is closest to angry/fear (choose whichever is stronger).
-    if (p == 'disgust') {
-      final angryP = probs['angry'] ?? 0.0;
-      final fearP = probs['fear'] ?? 0.0;
-      final pick = angryP >= fearP ? 'angry' : 'fear';
-      if ((probs[pick] ?? 0.0) < 0.05) return _bestSupportedMood(probs);
-      return pick;
-    }
 
     // Unknown or any other non-supported label → best supported.
     return _bestSupportedMood(probs);

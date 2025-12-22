@@ -50,8 +50,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
             ),
             backgroundColor: AppTheme.successColor,
+            duration: Duration(seconds: 1),
           ),
         );
+        
+        // Wait a moment for the snackbar to show, then navigate
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        // Navigate to welcome screen - remove all previous routes
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/welcome',
+            (route) => false,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

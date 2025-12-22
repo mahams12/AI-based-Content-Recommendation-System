@@ -723,6 +723,12 @@ class VoiceMoodResultsScreen extends StatelessWidget {
         return 'Calm';
       case 'neutral':
         return 'Neutral';
+      case 'fear':
+        return 'Fear';
+      case 'surprise':
+        return 'Surprise';
+      case 'disgust':
+        return 'Disgust';
       default:
         return mood.substring(0, 1).toUpperCase() + mood.substring(1);
     }
@@ -750,6 +756,12 @@ class VoiceMoodResultsScreen extends StatelessWidget {
         return Icons.mood_bad;
       case 'calm':
         return Icons.self_improvement;
+      case 'fear':
+        return Icons.warning;
+      case 'surprise':
+        return Icons.celebration;
+      case 'disgust':
+        return Icons.sick;
       default:
         return Icons.mood;
     }
@@ -777,6 +789,12 @@ class VoiceMoodResultsScreen extends StatelessWidget {
         return Colors.red;
       case 'calm':
         return Colors.teal;
+      case 'fear':
+        return Colors.deepPurple;
+      case 'surprise':
+        return Colors.amber;
+      case 'disgust':
+        return Colors.orange.shade700;
       default:
         return Colors.grey;
     }

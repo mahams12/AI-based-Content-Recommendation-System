@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/models/content_model.dart';
+import '../../../../core/widgets/media_player.dart';
 import '../../../home/presentation/widgets/content_card.dart';
 
 /// Screen to display fetched content based on mood and filters
@@ -178,8 +179,13 @@ class ContentResultsScreen extends StatelessWidget {
                                 child: ContentCard(
                                   content: item,
                                   onTap: () {
-                                    // Handle content tap
-                                    // Navigate to content detail or play
+                                    // Open content in MediaPlayer dialog
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: true,
+                                      barrierColor: Colors.black54,
+                                      builder: (dialogContext) => MediaPlayer(content: item),
+                                    );
                                   },
                                 ),
                               );

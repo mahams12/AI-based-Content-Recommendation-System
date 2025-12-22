@@ -21,9 +21,11 @@ class _ChatScreenState extends State<ChatScreen> {
   final OpenAIService _openAIService = OpenAIService();
 
   String? _detectedMood;
+  String? _lastContentType;
   bool _isLoading = false;
   bool _waitingForMood = false;
   bool _waitingForContentType = false;
+  final List<String> _shownContentIds = [];
 
   @override
   void initState() {
@@ -140,6 +142,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _detectedMood = detectedMood;
       _waitingForMood = false;
       _waitingForContentType = true;
+      _lastContentType = null;
+      _shownContentIds.clear();
     });
 
     _addBotMessage(
@@ -155,14 +159,18 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (lowerInput.contains('movie') || lowerInput.contains('film')) {
       contentType = 'movies';
-    } else if (lowerInput.contains('song') || lowerInput.contains('music') || lowerInput.contains('track')) {
+    } else if (lowerInput.contains('song') ||
+        lowerInput.contains('music') ||
+        lowerInput.contains('track')) {
       contentType = 'songs';
-    } else if (lowerInput.contains('video') || lowerInput.contains('youtube')) {
+    } else if (lowerInput.contains('video') ||
+        lowerInput.contains('youtube')) {
       contentType = 'videos';
     }
 
     setState(() {
       _waitingForContentType = false;
+      _lastContentType = contentType;
     });
 
     // Get recommendations
@@ -172,6 +180,9 @@ class _ChatScreenState extends State<ChatScreen> {
       final recommendations = await _openAIService.getContentRecommendations(
         mood: _detectedMood ?? 'neutral',
         contentType: contentType,
+        // Slightly larger pool so we can offer "more" later
+        limit: 10,
+        excludeIds: _shownContentIds,
       );
 
       if (recommendations.isEmpty) {
@@ -183,10 +194,14 @@ class _ChatScreenState extends State<ChatScreen> {
           _waitingForContentType = true;
         });
       } else {
+        _shownContentIds.addAll(recommendations.map((item) => item.id));
+
         final response = _openAIService.formatContentResponse(
           mood: _detectedMood ?? 'neutral',
           contentType: contentType,
           content: recommendations,
+          includeLinks: true,
+          maxItems: 5,
         );
         _addBotMessage(response);
         
@@ -201,8 +216,116 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// Handle follow-up messages like "more", "more links", or "suggest"
+  Future<bool> _tryHandleRecommendationFollowUp(String input) async {
+    final lowerInput = input.toLowerCase();
+    final wantsMore = lowerInput.contains('more') || lowerInput.contains('another');
+    final wantsLinks = lowerInput.contains('link') || lowerInput.contains('url') || lowerInput.contains('open');
+    final wantsSuggest = lowerInput.contains('suggest') || lowerInput.contains('recommend');
+
+    // Detect if the user is clearly asking for recommendations/links
+    final mentionsContent = lowerInput.contains('song') ||
+        lowerInput.contains('music') ||
+        lowerInput.contains('track') ||
+        lowerInput.contains('movie') ||
+        lowerInput.contains('film') ||
+        lowerInput.contains('video') ||
+        lowerInput.contains('youtube') ||
+        lowerInput.contains('spotify');
+
+    final isRecommendationIntent =
+        wantsMore || wantsSuggest || wantsLinks || mentionsContent;
+    if (!isRecommendationIntent) return false;
+
+    // Try to infer mood from the message if we don't already have one
+    if (_detectedMood == null) {
+      final moodMap = {
+        'happy': ['happy', 'joy', 'joyful', 'cheerful', 'excited'],
+        'sad': ['sad', 'depressed', 'down', 'unhappy', 'melancholy'],
+        'angry': ['angry', 'mad', 'furious', 'annoyed', 'irritated'],
+        'fear': ['fear', 'afraid', 'scared', 'anxious', 'worried', 'nervous'],
+        'surprise': ['surprised', 'surprise', 'shocked', 'amazed', 'wow'],
+        'neutral': ['neutral', 'okay', 'fine', 'normal', 'alright'],
+      };
+
+      String inferredMood = 'neutral';
+      for (final entry in moodMap.entries) {
+        if (entry.value.any((word) => lowerInput.contains(word))) {
+          inferredMood = entry.key;
+          break;
+        }
+      }
+      _detectedMood = inferredMood;
+    }
+
+    // Infer content type from message or fall back to last one
+    String contentType = _lastContentType ?? 'videos';
+    if (lowerInput.contains('movie') || lowerInput.contains('film')) {
+      contentType = 'movies';
+    } else if (lowerInput.contains('song') ||
+        lowerInput.contains('music') ||
+        lowerInput.contains('track')) {
+      contentType = 'songs';
+    } else if (lowerInput.contains('video') ||
+        lowerInput.contains('youtube')) {
+      contentType = 'videos';
+    }
+
+    // Remember latest content type so "more" or "links" keeps using it
+    _lastContentType = contentType;
+
+    _addBotMessage(
+      wantsLinks
+          ? 'Got it! Let me grab some fresh ${contentType} links for your ${_detectedMood} mood...'
+          : 'Sure, here are a few more ${contentType} suggestions for your ${_detectedMood} mood:',
+    );
+
+    var recommendations = await _openAIService.getContentRecommendations(
+      mood: _detectedMood ?? 'neutral',
+      contentType: contentType,
+      limit: wantsLinks ? 8 : 6,
+      excludeIds: _shownContentIds,
+    );
+
+    // If we've exhausted all unique items, allow some repeats so the
+    // user at least gets working links instead of an empty reply.
+    if (recommendations.isEmpty) {
+      recommendations = await _openAIService.getContentRecommendations(
+        mood: _detectedMood ?? 'neutral',
+        contentType: contentType,
+        limit: wantsLinks ? 8 : 6,
+        excludeIds: const [],
+      );
+
+      if (recommendations.isEmpty) {
+        _addBotMessage(
+          'I\'ve already shared most of the popular options. Try changing your mood or content type for something fresh.',
+        );
+        return true;
+      }
+    }
+
+    _shownContentIds.addAll(recommendations.map((item) => item.id));
+
+    final response = _openAIService.formatContentResponse(
+      mood: _detectedMood ?? 'neutral',
+      contentType: contentType,
+      content: recommendations,
+      includeLinks: wantsLinks,
+      maxItems: wantsLinks ? 8 : 6,
+      namesOnly: !wantsLinks,
+    );
+    _addBotMessage(response);
+
+    return true;
+  }
+
   Future<void> _handleGeneralChat(String input) async {
-    // Use OpenAI for general conversation
+    // First, see if the user is asking for more / new recommendations
+    final handled = await _tryHandleRecommendationFollowUp(input);
+    if (handled) return;
+
+    // Otherwise, use OpenAI for general conversation
     try {
       final messages = [
         {'role': 'system', 'content': 'You are a helpful assistant for Content Nation, an app that recommends movies, songs, and videos based on user mood. Be friendly and concise.'},
@@ -219,11 +342,13 @@ class _ChatScreenState extends State<ChatScreen> {
   void _handleOptionSelected(String option) {
     if (option.contains('🔄') || option.contains('New Search')) {
       // Reset and start over
-    setState(() {
-      _detectedMood = null;
-      _waitingForMood = true;
-      _waitingForContentType = false;
-    });
+      setState(() {
+        _detectedMood = null;
+        _waitingForMood = true;
+        _waitingForContentType = false;
+        _lastContentType = null;
+        _shownContentIds.clear();
+      });
       _addBotMessage(
         'Great! Let\'s start over. How\'s your mood today?',
         options: ['😊 Happy', '😢 Sad', '😡 Angry', '😨 Fear', '😮 Surprise', '😐 Neutral'],
