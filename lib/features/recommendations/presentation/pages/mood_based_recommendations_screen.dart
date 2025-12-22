@@ -229,7 +229,7 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
         } else {
           print('⚠️ YouTube fetch failed: ${youtubeResult.error}');
         }
-
+        
         print('🎵 Fetching extended Spotify content...');
         final spotifyResult =
             await _apiService.getUnlimitedSpotifyContent(maxResults: 60);
@@ -239,7 +239,7 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
         } else {
           print('⚠️ Spotify fetch failed: ${spotifyResult.error}');
         }
-
+        
         print('🎬 Fetching extended TMDB content...');
         final tmdbResult =
             await _apiService.getUnlimitedTMDBContent(maxResults: 60);

@@ -19,7 +19,7 @@ class HistoryService {
       print('❌ Error initializing history service: $e');
       // Try to reinitialize
       try {
-        _historyBox = await Hive.openBox<Map>(_historyBoxName);
+    _historyBox = await Hive.openBox<Map>(_historyBoxName);
       } catch (e2) {
         print('❌ Failed to reinitialize history service: $e2');
       }
@@ -136,28 +136,28 @@ class HistoryService {
               return <ContentItem>[];
             },
           );
-          if (firebaseHistory.isNotEmpty) {
-            // Merge Firebase history with local history
-            history = firebaseHistory;
-            // Also sync Firebase history to local storage
-            for (final item in firebaseHistory) {
-              final historyItem = {
-                'id': item.id,
-                'title': item.title,
-                'description': item.description,
-                'thumbnailUrl': item.thumbnailUrl,
-                'platform': item.platform.name,
-                'channelName': item.channelName,
-                'artistName': item.artistName,
-                'duration': item.duration,
-                'viewCount': item.viewCount,
-                'publishedAt': item.publishedAt?.millisecondsSinceEpoch,
-                'category': item.category.name,
+        if (firebaseHistory.isNotEmpty) {
+          // Merge Firebase history with local history
+          history = firebaseHistory;
+          // Also sync Firebase history to local storage
+          for (final item in firebaseHistory) {
+            final historyItem = {
+              'id': item.id,
+              'title': item.title,
+              'description': item.description,
+              'thumbnailUrl': item.thumbnailUrl,
+              'platform': item.platform.name,
+              'channelName': item.channelName,
+              'artistName': item.artistName,
+              'duration': item.duration,
+              'viewCount': item.viewCount,
+              'publishedAt': item.publishedAt?.millisecondsSinceEpoch,
+              'category': item.category.name,
                 'externalUrl': item.externalUrl,
-                'timestamp': DateTime.now().millisecondsSinceEpoch,
-              };
-              await _historyBox.put(item.id, historyItem);
-            }
+              'timestamp': DateTime.now().millisecondsSinceEpoch,
+            };
+            await _historyBox.put(item.id, historyItem);
+          }
           }
         } catch (e) {
           print('⚠️ Error fetching Firebase history: $e, using local');
@@ -166,8 +166,8 @@ class HistoryService {
       
       // If no Firebase history or user not signed in, use local history
       if (history.isEmpty) {
-        final historyItems = _historyBox.values.toList();
-        
+      final historyItems = _historyBox.values.toList();
+      
         // Filter out invalid items and sort by timestamp (most recent first)
         final validItems = historyItems.where((item) {
           final title = item['title'] as String? ?? '';
@@ -176,10 +176,10 @@ class HistoryService {
         }).toList();
         
         validItems.sort((a, b) {
-          final timestampA = a['timestamp'] as int? ?? 0;
-          final timestampB = b['timestamp'] as int? ?? 0;
-          return timestampB.compareTo(timestampA);
-        });
+        final timestampA = a['timestamp'] as int? ?? 0;
+        final timestampB = b['timestamp'] as int? ?? 0;
+        return timestampB.compareTo(timestampA);
+      });
 
         history = validItems.map((item) => _mapToContentItem(item)).toList();
         print('📚 Loaded ${history.length} items from local history');
@@ -215,7 +215,7 @@ class HistoryService {
         return fallbackHistory;
       } catch (e2) {
         print('❌ Fallback also failed: $e2');
-        return [];
+      return [];
       }
     }
   }

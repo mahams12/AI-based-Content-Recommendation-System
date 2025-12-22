@@ -342,13 +342,13 @@ class _ChatScreenState extends State<ChatScreen> {
   void _handleOptionSelected(String option) {
     if (option.contains('🔄') || option.contains('New Search')) {
       // Reset and start over
-      setState(() {
-        _detectedMood = null;
-        _waitingForMood = true;
-        _waitingForContentType = false;
+    setState(() {
+      _detectedMood = null;
+      _waitingForMood = true;
+      _waitingForContentType = false;
         _lastContentType = null;
         _shownContentIds.clear();
-      });
+    });
       _addBotMessage(
         'Great! Let\'s start over. How\'s your mood today?',
         options: ['😊 Happy', '😢 Sad', '😡 Angry', '😨 Fear', '😮 Surprise', '😐 Neutral'],

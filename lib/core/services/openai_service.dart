@@ -176,15 +176,15 @@ class OpenAIService {
 
       // Add link based on content type (if requested)
       if (withLinks) {
-        if (item.externalUrl != null && item.externalUrl!.isNotEmpty) {
-          buffer.writeln('   🔗 ${item.externalUrl}');
-        } else if (item.id.isNotEmpty) {
-          if (contentType == 'videos' || contentType == 'youtube') {
-            buffer.writeln('   🔗 https://www.youtube.com/watch?v=${item.id}');
-          } else if (contentType == 'songs' || contentType == 'music') {
-            buffer.writeln('   🔗 https://open.spotify.com/track/${item.id}');
-          } else if (contentType == 'movies') {
-            buffer.writeln('   🔗 https://www.themoviedb.org/movie/${item.id}');
+      if (item.externalUrl != null && item.externalUrl!.isNotEmpty) {
+        buffer.writeln('   🔗 ${item.externalUrl}');
+      } else if (item.id.isNotEmpty) {
+        if (contentType == 'videos' || contentType == 'youtube') {
+          buffer.writeln('   🔗 https://www.youtube.com/watch?v=${item.id}');
+        } else if (contentType == 'songs' || contentType == 'music') {
+          buffer.writeln('   🔗 https://open.spotify.com/track/${item.id}');
+        } else if (contentType == 'movies') {
+          buffer.writeln('   🔗 https://www.themoviedb.org/movie/${item.id}');
           }
         }
       }

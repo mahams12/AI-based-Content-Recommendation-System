@@ -277,17 +277,17 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble>
       final url = match.group(0)!;
       spans.add(
         TextSpan(
-          text: url,
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            color: AppTheme.primaryColor,
-            height: 1.4,
-            decoration: TextDecoration.underline,
-          ),
-          recognizer: TapGestureRecognizer()
-            ..onTap = () async {
+        text: url,
+        style: GoogleFonts.inter(
+          fontSize: 15,
+          color: AppTheme.primaryColor,
+          height: 1.4,
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () async {
               try {
-                final uri = Uri.parse(url);
+            final uri = Uri.parse(url);
                 
                 // Add to history when link is clicked
                 _addUrlToHistory(url);
@@ -321,8 +321,8 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble>
               } catch (e) {
                 // ignore: avoid_print
                 print('❌ Chat link parse error for $url: $e');
-              }
-            },
+            }
+          },
         ),
       );
 
