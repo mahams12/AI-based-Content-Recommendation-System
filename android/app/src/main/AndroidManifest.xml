@@ -10,7 +10,7 @@
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     
     <application
-        android:label="ai_based_content_recommendation_system"
+        android:label="Content Nation"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

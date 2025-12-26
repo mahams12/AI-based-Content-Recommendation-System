@@ -147,7 +147,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _addBotMessage(
-      'Great! I detected you\'re feeling ${detectedMood}. What type of content would you like?\n\nChoose one:',
+      'Great! I detected you\'re feeling $detectedMood. What type of content would you like?\n\nChoose one:',
       options: ['🎬 Movies', '🎵 Songs', '📺 Videos'],
     );
   }
@@ -174,7 +174,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     // Get recommendations
-    _addBotMessage('Perfect! Let me find some ${contentType} recommendations for your ${_detectedMood} mood...');
+    _addBotMessage('Perfect! Let me find some $contentType recommendations for your $_detectedMood mood...');
 
     try {
       final recommendations = await _openAIService.getContentRecommendations(
@@ -187,7 +187,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (recommendations.isEmpty) {
         _addBotMessage(
-          'I couldn\'t find any ${contentType} for your mood. Would you like to try a different content type?',
+          'I couldn\'t find any $contentType for your mood. Would you like to try a different content type?',
           options: ['🎬 Movies', '🎵 Songs', '📺 Videos'],
         );
         setState(() {
@@ -276,8 +276,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _addBotMessage(
       wantsLinks
-          ? 'Got it! Let me grab some fresh ${contentType} links for your ${_detectedMood} mood...'
-          : 'Sure, here are a few more ${contentType} suggestions for your ${_detectedMood} mood:',
+          ? 'Got it! Let me grab some fresh $contentType links for your $_detectedMood mood...'
+          : 'Sure, here are a few more $contentType suggestions for your $_detectedMood mood:',
     );
 
     var recommendations = await _openAIService.getContentRecommendations(

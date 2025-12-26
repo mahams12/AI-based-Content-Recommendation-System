@@ -668,7 +668,7 @@ class _VoiceMoodDetectionScreenState extends ConsumerState<VoiceMoodDetectionScr
     final minutes = seconds ~/ 60;
     final secs = seconds % 60;
     if (minutes > 0) {
-      return '${minutes}:${secs.toString().padLeft(2, '0')}';
+      return '$minutes:${secs.toString().padLeft(2, '0')}';
     }
     return '0:${secs.toString().padLeft(2, '0')}';
   }
@@ -1124,7 +1124,7 @@ class VoiceMoodResultsScreen extends StatelessWidget {
                             ],
                           ),
                         );
-                      }).toList(),
+                      }),
 
                       const SizedBox(height: 32),
                     ],

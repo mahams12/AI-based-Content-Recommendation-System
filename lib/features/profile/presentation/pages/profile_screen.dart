@@ -9,6 +9,8 @@ import '../../../../core/models/content_model.dart';
 import '../../../../core/widgets/safe_network_image.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/user_profile_service.dart';
+import '../../../../core/services/history_service.dart';
+import '../../../../core/services/favorites_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../history/presentation/pages/history_screen.dart';
 import 'notifications_screen.dart';
@@ -723,11 +725,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onPressed: () async {
               Navigator.of(context).pop();
               try {
-                // Clear all user data
-                await ref.read(authServiceProvider).signOut();
+                // Clear user-specific data before signing out
+                final userProfileService = UserProfileService();
+                final historyService = HistoryService();
+                final favoritesService = FavoritesService();
+                
+                // Clear profile data
+                await userProfileService.clearUserProfileData();
+                
+                // Clear history and favorites (close user-specific boxes)
+                await historyService.clearUserHistory();
+                await favoritesService.clearUserFavorites();
+                
                 // Clear welcome completion flag so user can go through onboarding again
                 await StorageService.setBool('has_completed_welcome', false);
                 await StorageService.remove('user_mood_data');
+                
+                // Sign out from Firebase
+                await ref.read(authServiceProvider).signOut();
                 
                 // Navigate directly to login screen - remove all previous routes
                 if (context.mounted) {

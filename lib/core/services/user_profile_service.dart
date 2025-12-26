@@ -16,16 +16,13 @@ class UserProfileService {
 
   /// Get current user profile data
   Future<Map<String, String?>> getUserProfile() async {
-    // Always prioritize local storage first (most up-to-date)
-    final localName = StorageService.getString('user_display_name');
-    final localPhoto = StorageService.getString('user_photo_url');
-    
     final user = _auth.currentUser;
     if (user == null) {
-      // No user logged in, return local storage only
+      // No user logged in, return empty
       return {
-        'name': localName,
-        'photoUrl': localPhoto,
+        'name': null,
+        'photoUrl': null,
+        'email': null,
       };
     }
 
@@ -33,14 +30,33 @@ class UserProfileService {
     await user.reload();
     final reloadedUser = _auth.currentUser;
 
-    // Prioritize local storage, then Firebase, then empty
+    // Get user-specific local storage (scoped by user ID)
+    final userId = reloadedUser?.uid ?? user.uid;
+    final localName = StorageService.getString('user_display_name_$userId');
+    final localPhoto = StorageService.getString('user_photo_url_$userId');
+    
+    // Prioritize Firebase user data (displayName, photoURL, email)
+    // Only use local storage if Firebase doesn't have it
+    String? displayName;
+    if (reloadedUser?.displayName != null && reloadedUser!.displayName!.isNotEmpty) {
+      displayName = reloadedUser.displayName;
+    } else if (localName != null && localName.isNotEmpty) {
+      displayName = localName;
+    } else if (reloadedUser?.email != null) {
+      // Fallback to email username if no display name
+      displayName = reloadedUser!.email!.split('@')[0];
+    }
+
+    String? photoUrl;
+    if (reloadedUser?.photoURL != null && reloadedUser!.photoURL!.isNotEmpty) {
+      photoUrl = reloadedUser.photoURL;
+    } else if (localPhoto != null && localPhoto.isNotEmpty) {
+      photoUrl = localPhoto;
+    }
+
     return {
-      'name': (localName != null && localName.isNotEmpty) 
-          ? localName 
-          : (reloadedUser?.displayName ?? ''),
-      'photoUrl': (localPhoto != null && localPhoto.isNotEmpty) 
-          ? localPhoto 
-          : (reloadedUser?.photoURL ?? ''),
+      'name': displayName,
+      'photoUrl': photoUrl,
       'email': reloadedUser?.email ?? user.email,
     };
   }
@@ -52,13 +68,16 @@ class UserProfileService {
       if (user != null) {
         await user.updateDisplayName(name);
         await user.reload();
+        // Save locally scoped by user ID
+        await StorageService.setString('user_display_name_${user.uid}', name);
       }
-      // Also save locally
-      await StorageService.setString('user_display_name', name);
     } catch (e) {
       print('Error updating display name: $e');
       // Still save locally even if Firebase fails
-      await StorageService.setString('user_display_name', name);
+      final user = _auth.currentUser;
+      if (user != null) {
+        await StorageService.setString('user_display_name_${user.uid}', name);
+      }
     }
   }
 
@@ -69,17 +88,16 @@ class UserProfileService {
       if (user != null && photoUrl != null) {
         await user.updatePhotoURL(photoUrl);
         await user.reload();
-      }
-      // Also save locally
-      if (photoUrl != null) {
-        await StorageService.setString('user_photo_url', photoUrl);
+        // Save locally scoped by user ID
+        await StorageService.setString('user_photo_url_${user.uid}', photoUrl);
       }
       return photoUrl;
     } catch (e) {
       print('Error updating profile picture: $e');
       // Still save locally even if Firebase fails
-      if (photoUrl != null) {
-        await StorageService.setString('user_photo_url', photoUrl);
+      final user = _auth.currentUser;
+      if (photoUrl != null && user != null) {
+        await StorageService.setString('user_photo_url_${user.uid}', photoUrl);
       }
       return photoUrl;
     }
@@ -173,8 +191,11 @@ class UserProfileService {
         // Update user profile in Firebase
         await updateProfilePicture(photoUrl);
         
-        // Also save file path locally as backup
-        await StorageService.setString('user_photo_file_path', imageFile.path);
+        // Also save file path locally as backup (scoped by user ID)
+        final user = _auth.currentUser;
+        if (user != null) {
+          await StorageService.setString('user_photo_file_path_${user.uid}', imageFile.path);
+        }
         
         print('✅ Profile picture updated successfully');
         return photoUrl;
@@ -186,6 +207,27 @@ class UserProfileService {
       print('❌ Error updating profile picture from file: $e');
       print('Stack trace: $stackTrace');
       return null;
+    }
+  }
+
+  /// Clear user profile data from local storage (called on logout)
+  Future<void> clearUserProfileData() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final userId = user.uid;
+        // Clear user-specific profile data
+        await StorageService.remove('user_display_name_$userId');
+        await StorageService.remove('user_photo_url_$userId');
+        await StorageService.remove('user_photo_file_path_$userId');
+        print('✅ Cleared profile data for user: $userId');
+      }
+      // Also clear any old non-scoped data (for backward compatibility)
+      await StorageService.remove('user_display_name');
+      await StorageService.remove('user_photo_url');
+      await StorageService.remove('user_photo_file_path');
+    } catch (e) {
+      print('❌ Error clearing user profile data: $e');
     }
   }
 }

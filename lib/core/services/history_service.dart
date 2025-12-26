@@ -1,29 +1,62 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/content_model.dart';
 import 'firebase_sync_service.dart';
 
 class HistoryService {
-  static const String _historyBoxName = 'user_history';
+  static const String _historyBoxPrefix = 'user_history_';
   static const int _maxHistoryItems = 100;
   
-  late Box<Map> _historyBox;
+  Box<Map>? _historyBox;
+  String? _currentUserId;
   final FirebaseSyncService _firebaseSync = FirebaseSyncService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  String? get _userId => _auth.currentUser?.uid;
+
+  String get _historyBoxName {
+    final userId = _userId ?? 'guest';
+    return '$_historyBoxPrefix$userId';
+  }
 
   Future<void> init() async {
     try {
-      if (!_historyBox.isOpen) {
+      final userId = _userId;
+      
+      // If user changed, close old box and open new one
+      if (_currentUserId != null && _currentUserId != userId) {
+        await _closeCurrentBox();
+      }
+      
+      // If box is not open or user changed, open new box
+      if (_historyBox == null || !_historyBox!.isOpen || _currentUserId != userId) {
+        _currentUserId = userId;
         _historyBox = await Hive.openBox<Map>(_historyBoxName);
-        print('✅ History service initialized');
+        print('✅ History service initialized for user: ${userId ?? "guest"}');
       }
     } catch (e) {
       print('❌ Error initializing history service: $e');
       // Try to reinitialize
       try {
-    _historyBox = await Hive.openBox<Map>(_historyBoxName);
+        _currentUserId = _userId;
+        _historyBox = await Hive.openBox<Map>(_historyBoxName);
       } catch (e2) {
         print('❌ Failed to reinitialize history service: $e2');
       }
     }
+  }
+
+  Future<void> _closeCurrentBox() async {
+    try {
+      if (_historyBox != null && _historyBox!.isOpen) {
+        await _historyBox!.close();
+        print('✅ Closed history box for user: $_currentUserId');
+      }
+    } catch (e) {
+      print('⚠️ Error closing history box: $e');
+    }
+    _historyBox = null;
+    _currentUserId = null;
   }
 
   Future<void> addToHistory(ContentItem item) async {
@@ -32,8 +65,9 @@ class HistoryService {
       print('📝 Platform: ${item.platform.name}, Category: ${item.category.name}');
       
       // Ensure box is initialized
-      if (!_historyBox.isOpen) {
-        await init();
+      await init();
+      if (_historyBox == null || !_historyBox!.isOpen) {
+        throw Exception('History box not initialized');
       }
       
       // Create unique key combining platform and ID to avoid conflicts
@@ -57,10 +91,10 @@ class HistoryService {
       };
 
       // Remove if already exists to avoid duplicates (using unique key)
-      await _historyBox.delete(uniqueKey);
+      await _historyBox!.delete(uniqueKey);
       
       // Add to beginning of list (local storage) using unique key
-      await _historyBox.put(uniqueKey, historyItem);
+      await _historyBox!.put(uniqueKey, historyItem);
       print('✅ Saved to local history: ${item.title} (${item.platform.name}) with key: $uniqueKey');
       
       // Sync to Firebase if user is signed in (non-blocking, with timeout)
@@ -88,16 +122,21 @@ class HistoryService {
 
   Future<void> removeFromHistory(String itemId) async {
     try {
+      await init();
+      if (_historyBox == null || !_historyBox!.isOpen) {
+        return;
+      }
+      
       // Find and delete by ID across all platforms (since we use platform_id as key)
       final keysToDelete = <String>[];
-      for (final key in _historyBox.keys) {
-        final item = _historyBox.get(key);
+      for (final key in _historyBox!.keys) {
+        final item = _historyBox!.get(key);
         if (item != null && item['id'] == itemId) {
           keysToDelete.add(key.toString());
         }
       }
       for (final key in keysToDelete) {
-        await _historyBox.delete(key);
+        await _historyBox!.delete(key);
         print('🗑️ Removed history item with key: $key');
       }
       // Also remove from Firebase
@@ -109,7 +148,10 @@ class HistoryService {
 
   Future<void> clearAllHistory() async {
     try {
-      await _historyBox.clear();
+      await init();
+      if (_historyBox != null && _historyBox!.isOpen) {
+        await _historyBox!.clear();
+      }
       // Also clear from Firebase
       await _firebaseSync.clearHistoryFromFirebase();
     } catch (e) {
@@ -120,8 +162,9 @@ class HistoryService {
   Future<List<ContentItem>> getHistory() async {
     try {
       // Ensure box is initialized
-      if (!_historyBox.isOpen) {
-        await init();
+      await init();
+      if (_historyBox == null || !_historyBox!.isOpen) {
+        return [];
       }
       
       List<ContentItem> history = [];
@@ -141,6 +184,7 @@ class HistoryService {
           history = firebaseHistory;
           // Also sync Firebase history to local storage
           for (final item in firebaseHistory) {
+            final uniqueKey = '${item.platform.name}_${item.id}';
             final historyItem = {
               'id': item.id,
               'title': item.title,
@@ -156,7 +200,7 @@ class HistoryService {
                 'externalUrl': item.externalUrl,
               'timestamp': DateTime.now().millisecondsSinceEpoch,
             };
-            await _historyBox.put(item.id, historyItem);
+            await _historyBox!.put(uniqueKey, historyItem);
           }
           }
         } catch (e) {
@@ -166,7 +210,7 @@ class HistoryService {
       
       // If no Firebase history or user not signed in, use local history
       if (history.isEmpty) {
-      final historyItems = _historyBox.values.toList();
+      final historyItems = _historyBox!.values.toList();
       
         // Filter out invalid items and sort by timestamp (most recent first)
         final validItems = historyItems.where((item) {
@@ -192,10 +236,11 @@ class HistoryService {
       print('❌ Error getting history: $e');
       // Fallback to local history on error
       try {
-        if (!_historyBox.isOpen) {
-          await init();
+        await init();
+        if (_historyBox == null || !_historyBox!.isOpen) {
+          return [];
         }
-        final historyItems = _historyBox.values.toList();
+        final historyItems = _historyBox!.values.toList();
         
         // Filter out invalid items
         final validItems = historyItems.where((item) {
@@ -222,7 +267,10 @@ class HistoryService {
 
   Future<void> _limitHistorySize() async {
     try {
-      final items = _historyBox.values.toList();
+      if (_historyBox == null || !_historyBox!.isOpen) {
+        return;
+      }
+      final items = _historyBox!.values.toList();
       if (items.length > _maxHistoryItems) {
         // Sort by timestamp and remove oldest items
         items.sort((a, b) {
@@ -235,12 +283,12 @@ class HistoryService {
         final itemsToRemove = items.take(items.length - _maxHistoryItems);
         for (final itemToRemove in itemsToRemove) {
           // Find the key for this item
-          for (final key in _historyBox.keys) {
-            final item = _historyBox.get(key);
+          for (final key in _historyBox!.keys) {
+            final item = _historyBox!.get(key);
             if (item != null && 
                 item['id'] == itemToRemove['id'] && 
                 item['platform'] == itemToRemove['platform']) {
-              await _historyBox.delete(key);
+              await _historyBox!.delete(key);
               break;
             }
           }
@@ -277,6 +325,16 @@ class HistoryService {
   }
 
   Future<void> close() async {
-    await _historyBox.close();
+    await _closeCurrentBox();
+  }
+
+  /// Clear history for current user (called on logout)
+  Future<void> clearUserHistory() async {
+    try {
+      await _closeCurrentBox();
+      print('✅ Cleared history for user: $_currentUserId');
+    } catch (e) {
+      print('❌ Error clearing user history: $e');
+    }
   }
 }

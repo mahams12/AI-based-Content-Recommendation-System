@@ -333,7 +333,7 @@ class AuthService {
       
       // If it's already a string error, rethrow it
       if (e is String) {
-        throw e;
+        rethrow;
       }
       
       throw 'Failed to send password reset email.\n\nError: $e\n\nPlease try:\n1. Check your email address\n2. Wait a few minutes and try again\n3. Check your spam folder\n4. Contact support if issue persists';

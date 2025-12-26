@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -387,31 +388,46 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
         return;
       }
       
+      // Shuffle content for variety before filtering
+      allContent.shuffle();
+      
       // Filter content by mood using mood filtering service
       List<ContentItem> moodFilteredContent;
       if (allContent.isEmpty) {
         print('⚠️ No content fetched from APIs, using empty list');
         moodFilteredContent = [];
       } else {
+        print('🎯 Filtering ${allContent.length} items by mood: $finalMood');
         moodFilteredContent = await _moodFilteringService.filterContentByMood(
           content: allContent,
           mood: finalMood,
           maxResults: 100,
         );
         
-        print('🎯 Mood-filtered content: ${moodFilteredContent.length} items');
+        print('✅ Mood-filtered content: ${moodFilteredContent.length} items for mood: $finalMood');
         
-        // If mood filtering returns too few items, use original content (with limit)
-        if (moodFilteredContent.length < 10 && allContent.length > 0) {
-          print('⚠️ Mood filtering returned too few items (${moodFilteredContent.length}), using top 50 items from all content');
+        // Log sample items for debugging
+        if (moodFilteredContent.isNotEmpty) {
+          print('📋 Sample filtered items:');
+          for (int i = 0; i < min(3, moodFilteredContent.length); i++) {
+            final item = moodFilteredContent[i];
+            print('   ${i + 1}. ${item.title} (${item.platform.name}) - Genres: ${item.genres.join(", ")}');
+          }
+        }
+        
+        // If mood filtering returns too few items, use original content (with limit, shuffled)
+        if (moodFilteredContent.length < 10 && allContent.isNotEmpty) {
+          print('⚠️ Mood filtering returned too few items (${moodFilteredContent.length}), using shuffled top 50 items from all content');
           moodFilteredContent = allContent.take(50).toList();
+          moodFilteredContent.shuffle();
         }
       }
       
-      // Final validation - ensure we have content to show
+      // Final validation - ensure we have content to show (shuffled)
       if (moodFilteredContent.isEmpty) {
-        print('⚠️ No content after filtering, using all fetched content');
+        print('⚠️ No content after filtering, using shuffled all fetched content');
         moodFilteredContent = allContent.take(50).toList();
+        moodFilteredContent.shuffle();
       }
       
       print('✅ Final content count: ${moodFilteredContent.length} items');

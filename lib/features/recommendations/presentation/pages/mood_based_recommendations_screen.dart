@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/content_model.dart';
@@ -283,10 +284,13 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
       
       print('📊 Total content fetched: ${allContent.length}');
       
+      // Shuffle content for variety before filtering
+      allContent.shuffle();
+      
       // Filter by mood using MoodBasedFilteringService
       List<ContentItem> filteredContent;
-      if (mood == 'all') {
-        // For \"all\" mood, just take a larger slice from each platform.
+      if (mood == 'all' || mood == 'neutral') {
+        // For \"all\" mood, just take a larger slice from each platform (shuffled).
         if (_selectedCategory == 'all') {
           final youtubeItems = allContent
               .where((item) => item.platform == ContentType.youtube)
@@ -301,9 +305,11 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
               .take(10)
               .toList();
           filteredContent = [...youtubeItems, ...spotifyItems, ...tmdbItems];
+          filteredContent.shuffle(); // Shuffle final result
         } else {
-          // For specific category, return 20–30 items
+          // For specific category, return 20–30 items (shuffled)
           filteredContent = allContent.take(30).toList();
+          filteredContent.shuffle();
         }
       } else {
         // Use mood-based filtering service for a larger playlist
@@ -313,13 +319,23 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
           mood: mood,
           maxResults: 30,
         );
-        print('✅ Filtered to ${filteredContent.length} items');
+        print('✅ Filtered to ${filteredContent.length} items for mood: $mood');
+        
+        // Log sample items for debugging
+        if (filteredContent.isNotEmpty) {
+          print('📋 Sample filtered items:');
+          for (int i = 0; i < min(3, filteredContent.length); i++) {
+            final item = filteredContent[i];
+            print('   ${i + 1}. ${item.title} (${item.platform.name}) - Genres: ${item.genres.join(", ")}');
+          }
+        }
       }
       
       // Ensure we have at least some content (fallback)
       if (filteredContent.isEmpty && allContent.isNotEmpty) {
-        print('⚠️ Mood filtering returned empty, using top items');
+        print('⚠️ Mood filtering returned empty, using shuffled top items');
         filteredContent = allContent.take(30).toList();
+        filteredContent.shuffle();
       }
       
       print('🎉 Final playlist size: ${filteredContent.length}');

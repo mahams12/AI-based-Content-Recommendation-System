@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../models/content_model.dart';
 import 'api_service.dart';
+import 'mood_based_filtering_service.dart';
 // Import API keys if config file exists (gitignored)
 // ignore: unused_import
 import '../config/api_keys.dart' if (dart.library.io) '../config/api_keys.dart';
@@ -136,6 +137,27 @@ class OpenAIService {
       // If our filters removed everything, fall back to the unfiltered list
       var finalPool = filteredContent.isNotEmpty ? filteredContent : uniqueContent;
 
+      // Apply mood-based filtering if mood is provided and not 'all' or 'neutral'
+      if (mood.isNotEmpty && mood != 'all' && mood != 'neutral') {
+        try {
+          final moodFilteringService = MoodBasedFilteringService();
+          final moodFiltered = await moodFilteringService.filterContentByMood(
+            content: finalPool,
+            mood: mood,
+            maxResults: limit * 2, // Get more to allow for variety
+          );
+          
+          if (moodFiltered.isNotEmpty) {
+            print('✅ Mood filtering in chat: ${moodFiltered.length} items for mood: $mood');
+            finalPool = moodFiltered;
+          } else {
+            print('⚠️ Mood filtering returned empty, using unfiltered content');
+          }
+        } catch (e) {
+          print('⚠️ Error in mood filtering: $e, using unfiltered content');
+        }
+      }
+
       // Shuffle so that results are different on each call
       finalPool.shuffle(Random());
 
@@ -157,13 +179,13 @@ class OpenAIService {
     bool namesOnly = false,
   }) {
     if (content.isEmpty) {
-      return 'I couldn\'t find any ${contentType} recommendations for your ${mood} mood. Please try again!';
+      return 'I couldn\'t find any $contentType recommendations for your $mood mood. Please try again!';
     }
 
     final withLinks = includeLinks && !namesOnly;
     final buffer = StringBuffer();
     buffer.writeln(
-      'Great! Based on your ${mood} mood, here are some ${contentType} recommendations:\n',
+      'Great! Based on your $mood mood, here are some $contentType recommendations:\n',
     );
 
     for (int i = 0; i < content.length && i < maxItems; i++) {

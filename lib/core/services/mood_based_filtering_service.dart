@@ -130,14 +130,18 @@ class MoodBasedFilteringService {
     bool includeTimeAdjustment = true,
   }) async {
     if (mood == 'all' || mood == 'neutral') {
-      return content.take(maxResults).toList();
+      // Shuffle for variety even when mood is neutral
+      final shuffled = List<ContentItem>.from(content)..shuffle();
+      return shuffled.take(maxResults).toList();
     }
 
     final scoredContent = <MapEntry<ContentItem, double>>[];
 
     for (final item in content) {
       final score = await _calculateMoodScore(item, mood, includeTimeAdjustment);
-      if (score > 0.1) { // Only include content with meaningful mood relevance
+      // Lower threshold to include more content, even if score is low
+      // This ensures we get diverse results even when genres are missing
+      if (score > 0.05) {
         scoredContent.add(MapEntry(item, score));
       }
     }
@@ -145,10 +149,34 @@ class MoodBasedFilteringService {
     // Sort by mood relevance score
     scoredContent.sort((a, b) => b.value.compareTo(a.value));
 
-    return scoredContent
-        .take(maxResults)
-        .map((entry) => entry.key)
-        .toList();
+    // If we have enough high-scoring items, use them
+    // Otherwise, include lower-scoring items to ensure diversity
+    final highScoreItems = scoredContent.where((e) => e.value > 0.3).toList();
+    final mediumScoreItems = scoredContent.where((e) => e.value > 0.1 && e.value <= 0.3).toList();
+    final lowScoreItems = scoredContent.where((e) => e.value <= 0.1).toList();
+
+    final result = <ContentItem>[];
+    
+    // Add high-scoring items first
+    result.addAll(highScoreItems.take((maxResults * 0.6).round()).map((e) => e.key));
+    
+    // Add medium-scoring items for variety
+    if (result.length < maxResults) {
+      final needed = maxResults - result.length;
+      result.addAll(mediumScoreItems.take(needed).map((e) => e.key));
+    }
+    
+    // If still not enough, add some low-scoring items (shuffled for variety)
+    if (result.length < maxResults) {
+      final needed = maxResults - result.length;
+      lowScoreItems.shuffle();
+      result.addAll(lowScoreItems.take(needed).map((e) => e.key));
+    }
+
+    // Shuffle the final result to ensure variety
+    result.shuffle();
+    
+    return result.take(maxResults).toList();
   }
 
   /// Calculate mood relevance score for a content item
@@ -160,23 +188,41 @@ class MoodBasedFilteringService {
     double score = 0.0;
     double totalWeight = 0.0;
 
-    // 1. Genre-based scoring (primary factor)
+    // 1. Genre-based scoring (primary factor, but adjust weight if genres are missing)
     final genreScore = _calculateGenreScore(item.genres, mood);
-    score += genreScore * 0.5;
-    totalWeight += 0.5;
+    if (item.genres.isNotEmpty && genreScore > 0) {
+      score += genreScore * 0.5;
+      totalWeight += 0.5;
+    } else {
+      // If no genres, reduce genre weight and increase title/description weight
+      score += genreScore * 0.2;
+      totalWeight += 0.2;
+    }
 
-    // 2. Title sentiment analysis
+    // 2. Title sentiment analysis (increased weight if genres missing)
     final titleSentiment = await _aiService.analyzeSentiment(item.title);
     final sentimentScore = _mapSentimentToMood(titleSentiment.mood, mood);
-    score += sentimentScore * 0.2;
-    totalWeight += 0.2;
+    final titleWeight = item.genres.isEmpty ? 0.35 : 0.2;
+    score += sentimentScore * titleWeight;
+    totalWeight += titleWeight;
+    
+    // Also check title for mood keywords
+    final titleMoodScore = _checkMoodKeywords(item.title, mood);
+    score += titleMoodScore * 0.1;
+    totalWeight += 0.1;
 
-    // 3. Description sentiment analysis (if available)
+    // 3. Description sentiment analysis (if available, increased weight if genres missing)
     if (item.description.isNotEmpty) {
       final descSentiment = await _aiService.analyzeSentiment(item.description);
       final descScore = _mapSentimentToMood(descSentiment.mood, mood);
-      score += descScore * 0.15;
-      totalWeight += 0.15;
+      final descWeight = item.genres.isEmpty ? 0.25 : 0.15;
+      score += descScore * descWeight;
+      totalWeight += descWeight;
+      
+      // Also check description for mood keywords
+      final descMoodScore = _checkMoodKeywords(item.description, mood);
+      score += descMoodScore * 0.1;
+      totalWeight += 0.1;
     }
 
     // 4. Platform-specific adjustments
@@ -194,6 +240,34 @@ class MoodBasedFilteringService {
     return totalWeight > 0 ? score / totalWeight : 0.0;
   }
 
+  /// Check for mood keywords in text
+  double _checkMoodKeywords(String text, String mood) {
+    final lowerText = text.toLowerCase();
+    final moodKeywords = {
+      'happy': ['happy', 'joy', 'fun', 'cheerful', 'upbeat', 'excited', 'celebration', 'party', 'smile', 'laugh'],
+      'sad': ['sad', 'depressed', 'lonely', 'heartbreak', 'tears', 'crying', 'melancholy', 'grief', 'sorrow'],
+      'angry': ['angry', 'rage', 'furious', 'mad', 'hate', 'aggressive', 'intense', 'violent', 'frustrated'],
+      'calm': ['calm', 'peaceful', 'serene', 'relax', 'quiet', 'tranquil', 'zen', 'meditation', 'chill'],
+      'energetic': ['energetic', 'energy', 'pump', 'workout', 'intense', 'powerful', 'strong', 'active', 'dynamic'],
+      'relaxed': ['relax', 'chill', 'lounge', 'ambient', 'soft', 'gentle', 'smooth', 'easy', 'mellow'],
+      'romantic': ['romantic', 'love', 'heart', 'kiss', 'romance', 'intimate', 'passion', 'sweet', 'tender'],
+      'adventurous': ['adventure', 'explore', 'journey', 'quest', 'epic', 'thrilling', 'exciting', 'action'],
+      'focused': ['focus', 'study', 'concentration', 'productivity', 'work', 'learn', 'educational', 'documentary'],
+      'nostalgic': ['nostalgic', 'memory', 'remember', 'old', 'classic', 'retro', 'vintage', 'past', 'throwback'],
+    };
+    
+    final keywords = moodKeywords[mood] ?? [];
+    int matches = 0;
+    for (final keyword in keywords) {
+      if (lowerText.contains(keyword)) {
+        matches++;
+      }
+    }
+    
+    // Return score based on number of keyword matches
+    return min(matches * 0.15, 0.6);
+  }
+
   /// Calculate genre-based mood score
   double _calculateGenreScore(List<String> genres, String mood) {
     final moodGenres = moodGenreWeights[mood] ?? {};
@@ -201,7 +275,31 @@ class MoodBasedFilteringService {
 
     double maxScore = 0.0;
     for (final genre in genres) {
-      final genreScore = moodGenres[genre] ?? 0.0;
+      // Try exact match first
+      var genreScore = moodGenres[genre] ?? 0.0;
+      
+      // Try case-insensitive match
+      if (genreScore == 0.0) {
+        for (final moodGenre in moodGenres.keys) {
+          if (genre.toLowerCase() == moodGenre.toLowerCase()) {
+            genreScore = moodGenres[moodGenre]!;
+            break;
+          }
+        }
+      }
+      
+      // Try partial match (e.g., "Hip-Hop" matches "Hip-Hop", "Hip Hop", "hiphop")
+      if (genreScore == 0.0) {
+        final genreLower = genre.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+        for (final moodGenre in moodGenres.keys) {
+          final moodGenreLower = moodGenre.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+          if (genreLower.contains(moodGenreLower) || moodGenreLower.contains(genreLower)) {
+            genreScore = moodGenres[moodGenre]! * 0.8; // Slightly lower score for partial match
+            break;
+          }
+        }
+      }
+      
       maxScore = max(maxScore, genreScore);
     }
 

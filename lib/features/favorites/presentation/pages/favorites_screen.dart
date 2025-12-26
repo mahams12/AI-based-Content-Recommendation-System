@@ -70,30 +70,53 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Future<void> _removeFromFavorites(String itemId) async {
+    // Store the item in case we need to restore it
+    final itemToRemove = _favoriteItems.firstWhere(
+      (item) => item.id == itemId,
+      orElse: () => throw Exception('Item not found'),
+    );
+    
+    // Optimistically update UI first for immediate feedback
+    setState(() {
+      _favoriteItems.removeWhere((item) => item.id == itemId);
+    });
+    
     try {
+      // Then remove from service
       await _favoritesService.removeFromFavorites(itemId);
-      setState(() {
-        _favoriteItems.removeWhere((item) => item.id == itemId);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Removed from favorites',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Removed from favorites',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
+            backgroundColor: Color(0xFF667eea),
+            duration: Duration(seconds: 2),
           ),
-          backgroundColor: Color(0xFF667eea),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error removing from favorites: $e',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+      // If removal failed, restore the item in the UI
+      setState(() {
+        // Find the correct position to insert (maintain order if needed)
+        _favoriteItems.add(itemToRemove);
+        // Optionally sort by addedAt if you want to maintain order
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error removing from favorites: $e',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
-          backgroundColor: Colors.red,
-        ),
-      );
+        );
+      }
     }
   }
 

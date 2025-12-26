@@ -79,46 +79,47 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _removeFromHistory(String itemId) async {
+    // Store all items with this ID in case we need to restore them
+    final itemsToRemove = _historyItems.where((item) => item.id == itemId).toList();
+    
+    // Optimistically update UI first for immediate feedback
+    setState(() {
+      _historyItems.removeWhere((item) => item.id == itemId);
+    });
+    
     try {
+      // Then remove from service
       await _historyService.removeFromHistory(itemId);
-      setState(() {
-        _historyItems.removeWhere((item) => item.id == itemId);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Removed from history'),
-          backgroundColor: Color(0xFF667eea),
-        ),
-      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Removed from history'),
+            backgroundColor: Color(0xFF667eea),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error removing from history: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _clearAllHistory() async {
-    try {
-      await _historyService.clearAllHistory();
+      // If removal failed, restore the items in the UI
       setState(() {
-        _historyItems.clear();
+        _historyItems.addAll(itemsToRemove);
+        // Sort by timestamp to maintain order (most recent first)
+        _historyItems.sort((a, b) {
+          // You might want to add timestamp comparison here if available
+          return 0; // For now, just restore
+        });
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('History cleared'),
-          backgroundColor: Color(0xFF667eea),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error clearing history: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error removing from history: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 

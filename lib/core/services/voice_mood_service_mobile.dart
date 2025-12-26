@@ -520,7 +520,7 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         moodProbs[mood] = probs[i];
       }
 
-      print('📊 Classifier probabilities: ${moodProbs.map((k, v) => MapEntry(k, (v * 100).toStringAsFixed(1) + '%'))}');
+      print('📊 Classifier probabilities: ${moodProbs.map((k, v) => MapEntry(k, '${(v * 100).toStringAsFixed(1)}%'))}');
       return moodProbs;
     } catch (e, stackTrace) {
       print('❌ Error classifying mood: $e');
@@ -1058,14 +1058,14 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       // If the same mood appears in all recent detections, use second highest instead
       if (_recentMoods.length == _recentMoodsHistory && _recentMoods.every((m) => m == finalMood)) {
         if (secondSupportedMood != null && secondSupportedMood != finalMood && secondSupportedProb > 0.08) {
-          print('⚠️ Same mood "$finalMood" detected ${_recentMoodsHistory} times in a row - using second supported "$secondSupportedMood" (${(secondSupportedProb * 100).toStringAsFixed(1)}%) for variation');
+          print('⚠️ Same mood "$finalMood" detected $_recentMoodsHistory times in a row - using second supported "$secondSupportedMood" (${(secondSupportedProb * 100).toStringAsFixed(1)}%) for variation');
           finalMood = secondSupportedMood;
           finalConfidence = secondSupportedProb;
           // Update recent moods
           _recentMoods[_recentMoods.length - 1] = finalMood;
     } else {
           // Use feature-based detection for variation
-          print('⚠️ Same mood "$finalMood" detected ${_recentMoodsHistory} times in a row - using feature-based detection for variation');
+          print('⚠️ Same mood "$finalMood" detected $_recentMoodsHistory times in a row - using feature-based detection for variation');
           final audioFeatures = _extractAudioFeatures(processedSamples);
           final featureBasedMood = _detectMoodFromFeatures(audioFeatures);
           if (featureBasedMood.mood != finalMood && _supportedMoods.contains(featureBasedMood.mood)) {

@@ -76,6 +76,8 @@ class ContentItem extends Equatable {
         ? (json['id']['videoId'] ?? '')
         : (json['id'] ?? '');
     final title = snippet['title'] ?? '';
+    final description = snippet['description'] ?? '';
+    final categoryId = snippet['categoryId'] as String?;
     
     // Check if this is a mock video ID (starts with 'youtube_video_')
     // If so, create a search URL instead of a direct video URL
@@ -88,16 +90,81 @@ class ContentItem extends Equatable {
       externalUrl = 'https://www.youtube.com/watch?v=$videoId';
     }
     
+    // Extract genres from YouTube categoryId and tags
+    final genres = <String>[];
+    
+    // Map YouTube category IDs to genres
+    final categoryMap = {
+      '1': 'Film & Animation',
+      '2': 'Autos & Vehicles',
+      '10': 'Music',
+      '15': 'Pets & Animals',
+      '17': 'Sports',
+      '19': 'Travel & Events',
+      '20': 'Gaming',
+      '22': 'People & Blogs',
+      '23': 'Comedy',
+      '24': 'Entertainment',
+      '25': 'News & Politics',
+      '26': 'Howto & Style',
+      '27': 'Education',
+      '28': 'Science & Technology',
+    };
+    
+    if (categoryId != null && categoryMap.containsKey(categoryId)) {
+      final categoryName = categoryMap[categoryId]!;
+      // Map to mood-compatible genres
+      if (categoryName.contains('Music')) genres.add('Pop');
+      if (categoryName.contains('Comedy')) genres.add('Comedy');
+      if (categoryName.contains('Gaming')) genres.add('Action');
+      if (categoryName.contains('Education')) genres.add('Documentary');
+      if (categoryName.contains('Entertainment')) genres.add('Comedy');
+    }
+    
+    // Extract genres from tags if available
+    final tags = snippet['tags'] as List<dynamic>?;
+    if (tags != null) {
+      for (final tag in tags) {
+        final tagStr = tag.toString().toLowerCase();
+        // Map common tags to genres
+        if (tagStr.contains('music') || tagStr.contains('song')) genres.add('Pop');
+        if (tagStr.contains('comedy') || tagStr.contains('funny')) genres.add('Comedy');
+        if (tagStr.contains('action') || tagStr.contains('fight')) genres.add('Action');
+        if (tagStr.contains('drama') || tagStr.contains('emotional')) genres.add('Drama');
+        if (tagStr.contains('romance') || tagStr.contains('love')) genres.add('Romance');
+        if (tagStr.contains('horror') || tagStr.contains('scary')) genres.add('Horror');
+        if (tagStr.contains('documentary') || tagStr.contains('educational')) genres.add('Documentary');
+      }
+    }
+    
+    // Infer from title/description if no genres found
+    if (genres.isEmpty) {
+      final combinedText = '${title.toLowerCase()} ${description.toLowerCase()}';
+      if (combinedText.contains('music') || combinedText.contains('song') || combinedText.contains('album')) {
+        genres.add('Pop');
+      }
+      if (combinedText.contains('comedy') || combinedText.contains('funny') || combinedText.contains('laugh')) {
+        genres.add('Comedy');
+      }
+      if (combinedText.contains('action') || combinedText.contains('fight') || combinedText.contains('adventure')) {
+        genres.add('Action');
+      }
+      if (combinedText.contains('drama') || combinedText.contains('emotional') || combinedText.contains('sad')) {
+        genres.add('Drama');
+      }
+    }
+    
     return ContentItem(
       id: videoId,
       title: title,
-      description: snippet['description'] ?? '',
+      description: description,
       thumbnailUrl: highThumbnail['url'] ?? 
                     mediumThumbnail['url'] ?? 
                     defaultThumbnail['url'] ?? '',
       externalUrl: externalUrl,
       platform: ContentType.youtube,
       category: ContentCategory.video,
+      genres: genres,
       channelName: snippet['channelTitle'] ?? '',
       contentType: 'Video',
       videoFormat: 'Standard',
@@ -174,6 +241,36 @@ class ContentItem extends Equatable {
         ? 'https://www.themoviedb.org/movie/$contentId'
         : 'https://www.themoviedb.org/tv/$contentId';
     
+    // Map TMDB genre IDs to genre names
+    final Map<int, String> tmdbGenreMap = {
+      28: 'Action',
+      12: 'Adventure',
+      16: 'Animation',
+      35: 'Comedy',
+      80: 'Crime',
+      99: 'Documentary',
+      18: 'Drama',
+      10751: 'Family',
+      14: 'Fantasy',
+      36: 'History',
+      27: 'Horror',
+      10402: 'Music',
+      9648: 'Mystery',
+      10749: 'Romance',
+      878: 'Sci-Fi',
+      10770: 'TV Movie',
+      53: 'Thriller',
+      10752: 'War',
+      37: 'Western',
+    };
+    
+    final genreIds = (json['genre_ids'] as List<dynamic>?) ?? [];
+    final genreNames = genreIds
+        .map((id) => tmdbGenreMap[id as int])
+        .where((name) => name != null)
+        .cast<String>()
+        .toList();
+    
     return ContentItem(
       id: contentId,
       title: json['title'] ?? json['name'] ?? '',
@@ -182,9 +279,7 @@ class ContentItem extends Equatable {
       externalUrl: externalUrl,
       platform: ContentType.tmdb,
       category: category,
-      genres: (json['genre_ids'] as List<dynamic>?)
-          ?.map((id) => id.toString())
-          .toList() ?? [],
+      genres: genreNames,
       rating: (json['vote_average'] as num?)?.toDouble(),
       contentType: category == ContentCategory.movie ? 'Movie' : 'TV Show',
       videoFormat: 'Standard',
@@ -212,6 +307,59 @@ class ContentItem extends Equatable {
     final duration = Duration(milliseconds: durationMs);
     final durationString = '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
     
+    // Extract genres from Spotify data
+    final genres = <String>[];
+    
+    // Get genres from album if available
+    final albumGenres = album['genres'] as List<dynamic>?;
+    if (albumGenres != null && albumGenres.isNotEmpty) {
+      genres.addAll(albumGenres.map((g) => g.toString()).toList());
+    }
+    
+    // Get genres from artists if available
+    for (final artist in artists) {
+      final artistGenres = artist['genres'] as List<dynamic>?;
+      if (artistGenres != null && artistGenres.isNotEmpty) {
+        genres.addAll(artistGenres.map((g) => g.toString()).toList());
+      }
+    }
+    
+    // Normalize genre names to match mood filtering expectations
+    final normalizedGenres = genres.map((genre) {
+      final g = genre.toLowerCase();
+      // Map Spotify genres to mood-compatible genres
+      if (g.contains('pop')) return 'Pop';
+      if (g.contains('rock')) return 'Rock';
+      if (g.contains('hip') || g.contains('rap')) return 'Hip-Hop';
+      if (g.contains('electronic') || g.contains('edm') || g.contains('dance')) return 'Electronic';
+      if (g.contains('jazz')) return 'Jazz';
+      if (g.contains('classical')) return 'Classical';
+      if (g.contains('country')) return 'Country';
+      if (g.contains('r&b') || g.contains('rnb') || g.contains('soul')) return 'R&B';
+      if (g.contains('reggae')) return 'Reggae';
+      if (g.contains('blues')) return 'Blues';
+      if (g.contains('metal')) return 'Metal';
+      if (g.contains('punk')) return 'Punk';
+      if (g.contains('alternative') || g.contains('indie')) return 'Alternative';
+      if (g.contains('ambient')) return 'Ambient';
+      if (g.contains('acoustic')) return 'Acoustic';
+      return genre; // Return original if no match
+    }).where((g) => g.isNotEmpty).toSet().toList();
+    
+    // Infer from title/artist if no genres found
+    if (normalizedGenres.isEmpty) {
+      final combinedText = '${json['name']?.toString().toLowerCase() ?? ''} ${artistNames.toLowerCase()}';
+      if (combinedText.contains('pop') || combinedText.contains('dance')) normalizedGenres.add('Pop');
+      if (combinedText.contains('rock')) normalizedGenres.add('Rock');
+      if (combinedText.contains('hip') || combinedText.contains('rap')) normalizedGenres.add('Hip-Hop');
+      if (combinedText.contains('electronic') || combinedText.contains('edm')) normalizedGenres.add('Electronic');
+      if (combinedText.contains('jazz')) normalizedGenres.add('Jazz');
+      if (combinedText.contains('classical')) normalizedGenres.add('Classical');
+      if (combinedText.contains('metal')) normalizedGenres.add('Metal');
+      if (combinedText.contains('punk')) normalizedGenres.add('Punk');
+      if (combinedText.contains('acoustic')) normalizedGenres.add('Acoustic');
+    }
+    
     return ContentItem(
       id: json['id'] ?? '',
       title: json['name'] ?? '',
@@ -221,6 +369,7 @@ class ContentItem extends Equatable {
       externalUrl: json['external_urls']?['spotify'],
       platform: ContentType.spotify,
       category: ContentCategory.music,
+      genres: normalizedGenres,
       duration: durationString,
       durationSeconds: duration.inSeconds,
       artistName: artistNames,
