@@ -79,7 +79,25 @@ class _SafeNetworkImageState extends State<SafeNetworkImage> {
         },
         errorBuilder: (context, error, stackTrace) {
           if (!mounted) return const SizedBox.shrink();
-          // If direct loading fails due to CORS, show platform placeholder immediately
+          return _buildPlatformPlaceholder();
+        },
+      );
+    } else if (widget.imageUrl.startsWith('https://i.scdn.co/image/')) {
+      // Spotify CDN (i.scdn.co) requires browser-like headers or returns 403
+      imageWidget = CachedNetworkImage(
+        imageUrl: widget.imageUrl,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+        httpHeaders: const {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          'Referer': 'https://open.spotify.com/',
+        },
+        placeholder: (context, url) => _buildLoadingWidget(),
+        errorWidget: (context, url, error) {
+          if (!mounted) return const SizedBox.shrink();
+          // Fallback to platform placeholder (music note) for failed Spotify images
           return _buildPlatformPlaceholder();
         },
       );

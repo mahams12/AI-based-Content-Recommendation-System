@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../constants/app_constants.dart';
 import '../models/content_model.dart';
@@ -316,31 +317,139 @@ class ApiService {
     }
   }
 
-  // Spotify API Methods (Mock implementation for web compatibility)
+  // Spotify token cache (Client Credentials flow)
+  String? _spotifyAccessToken;
+  DateTime? _spotifyTokenExpiry;
+
+  Future<String?> _getSpotifyAccessToken() async {
+    if (_spotifyAccessToken != null &&
+        _spotifyTokenExpiry != null &&
+        DateTime.now().isBefore(_spotifyTokenExpiry!)) {
+      return _spotifyAccessToken;
+    }
+    try {
+      final credentials = base64Encode(
+        utf8.encode('${AppConstants.spotifyClientId}:${AppConstants.spotifyClientSecret}'),
+      );
+      final response = await http.post(
+        Uri.parse(AppConstants.spotifyTokenUrl),
+        headers: {
+          'Authorization': 'Basic $credentials',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'grant_type=client_credentials',
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _spotifyAccessToken = data['access_token'] as String?;
+        final expiresIn = data['expires_in'] as int? ?? 3600;
+        _spotifyTokenExpiry = DateTime.now().add(Duration(seconds: expiresIn - 60));
+        return _spotifyAccessToken;
+      }
+      print('❌ Spotify token error: ${response.statusCode} ${response.body}');
+      return null;
+    } catch (e) {
+      print('❌ Spotify token error: $e');
+      return null;
+    }
+  }
+
+  // Spotify API Methods - Real API using Client Credentials
+  // Oversamples and filters to only return tracks with preview_url (Spotify often returns null for many tracks)
   Future<ApiResponse<List<ContentItem>>> searchSpotifyContent({
     required String query,
-    String type = 'track', // track, album, artist, playlist
+    String type = 'track',
     int limit = 20,
     int offset = 0,
   }) async {
+    final token = await _getSpotifyAccessToken();
+    if (token == null) {
+      return _spotifyFallbackToMock(query, type, limit);
+    }
     try {
-      // Mock implementation for web compatibility
-      // In production, this would use Spotify Web API with OAuth
-        return ApiResponse.success(SpotifyContent.getMockSpotifyContent(query, type, limit).map((track) => ContentItem.fromSpotifyJson(track)).toList());
+      final requestLimit = min(type == 'track' ? 20 : limit, 20);
+      final safeQuery = query.trim().isEmpty ? 'music' : (query.length > 100 ? query.substring(0, 100) : query);
+      final uri = Uri.parse('${AppConstants.spotifyBaseUrl}/search').replace(
+        queryParameters: {
+          'q': safeQuery,
+          'type': type,
+          'limit': requestLimit.toString(),
+          'offset': offset.clamp(0, 1000).toString(),
+          'market': 'US',
+        },
+      );
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final tracks = data['tracks']?['items'] as List<dynamic>? ?? [];
+        var items = tracks
+            .map((t) => ContentItem.fromSpotifyJson(t as Map<String, dynamic>))
+            .toList();
+        // Only keep tracks that have Spotify preview URL (many tracks return null)
+        if (type == 'track') {
+          items = items.where((item) => item.audioUrl != null && item.audioUrl!.isNotEmpty).toList();
+          items = items.take(limit).toList();
+        }
+        return ApiResponse.success(items);
+      }
+      if (response.statusCode >= 400) {
+        try {
+          final err = json.decode(response.body);
+          print('⚠️ Spotify search ${response.statusCode}: ${err['error']?['message'] ?? response.body}');
+        } catch (_) {
+          print('⚠️ Spotify search ${response.statusCode}: ${response.body}');
+        }
+      }
+      return _spotifyFallbackToMock(query, type, limit);
     } catch (e) {
-      return ApiResponse.error('Error fetching Spotify content: $e');
+      print('⚠️ Spotify search error: $e, using mock');
+      return _spotifyFallbackToMock(query, type, limit);
+    }
+  }
+
+  ApiResponse<List<ContentItem>> _spotifyFallbackToMock(String query, String type, int limit) {
+    try {
+      return ApiResponse.success(
+        SpotifyContent.getMockSpotifyContent(query, type, limit)
+            .map((t) => ContentItem.fromSpotifyJson(t))
+            .toList(),
+      );
+    } catch (e) {
+      return ApiResponse.error('Spotify fallback error: $e');
     }
   }
 
   Future<ApiResponse<List<ContentItem>>> getSpotifyFeaturedPlaylists({
     int limit = 20,
   }) async {
+    final token = await _getSpotifyAccessToken();
+    if (token == null) {
+      return ApiResponse.success(_getMockSpotifyPlaylists(limit));
+    }
     try {
-      // Mock implementation for web compatibility
-      // In production, this would use Spotify Web API with OAuth
+      final uri = Uri.parse('${AppConstants.spotifyBaseUrl}/browse/featured-playlists').replace(
+        queryParameters: {'limit': limit.toString(), 'country': 'US', 'locale': 'en_US'},
+      );
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final playlists = data['playlists']?['items'] as List<dynamic>? ?? [];
+        final items = playlists
+            .map((p) => ContentItem.fromSpotifyPlaylistJson(p as Map<String, dynamic>))
+            .toList();
+        return ApiResponse.success(items);
+      }
+      print('⚠️ Spotify featured playlists ${response.statusCode}, using mock');
       return ApiResponse.success(_getMockSpotifyPlaylists(limit));
     } catch (e) {
-      return ApiResponse.error('Error fetching Spotify playlists: $e');
+      print('⚠️ Spotify playlists error: $e, using mock');
+      return ApiResponse.success(_getMockSpotifyPlaylists(limit));
     }
   }
 
@@ -515,34 +624,47 @@ class ApiService {
   // Get unlimited Spotify content through multiple queries
   Future<ApiResponse<List<ContentItem>>> getUnlimitedSpotifyContent({
     int maxResults = 100,
+    String? mood,
   }) async {
     try {
       final results = <ContentItem>[];
       // ignore: avoid_print
-      print('🌐 Spotify getUnlimitedSpotifyContent requested maxResults=$maxResults');
+      print('🌐 Spotify getUnlimitedSpotifyContent requested maxResults=$maxResults mood=$mood');
       
-      // Multiple popular search queries to get diverse content
-      final queries = [
+      // Multiple search queries - shuffle order each call for variety (like YouTube/TMDB)
+      var queries = [
         'popular', 'trending', 'hits', 'charts', 'top', 'viral', 'new', 'hot',
-        'music', 'song', 'track', 'latest', 'best', 'favorite', 'love'
+        'music', 'song', 'track', 'latest', 'best', 'favorite', 'love',
+        'desi', 'bollywood', 'punjabi', 'pakistani', 'indian', 'english',
+        'happy', 'sad', 'calm', 'angry', 'upbeat', 'chill', 'party',
       ];
+      queries.shuffle(Random(DateTime.now().millisecondsSinceEpoch));
+      // Use mood-specific queries when available for preference alignment
+      if (mood != null && mood != 'all' && mood != 'neutral') {
+        final moodQueries = _moodToSpotifyQueries(mood);
+        queries = [...moodQueries, ...queries];
+      }
       
-      // Get tracks from multiple queries
+      // Get tracks from multiple queries (each returns only tracks with preview_url)
       for (final query in queries) {
         if (results.length >= maxResults) break;
-        
-        final tracksResult = await searchSpotifyContent(
-          query: query,
-          type: 'track',
-          limit: 20, // Get more tracks per query
-        );
-        
-        if (tracksResult.isSuccess && tracksResult.data != null) {
-          results.addAll(tracksResult.data!);
+        for (var page = 0; page < 3; page++) {
+          if (results.length >= maxResults) break;
+          final tracksResult = await searchSpotifyContent(
+            query: query,
+            type: 'track',
+            limit: 50,
+            offset: page * 50,
+          );
+          if (tracksResult.isSuccess && tracksResult.data != null && tracksResult.data!.isNotEmpty) {
+            results.addAll(tracksResult.data!);
+          } else {
+            break; // No more results for this query
+          }
         }
       }
       
-      // Get playlists
+      // Get playlists (no preview for playlists; they open in Spotify app)
       final playlistsResult = await getSpotifyFeaturedPlaylists(
         limit: 30,
       );
@@ -550,10 +672,14 @@ class ApiService {
         results.addAll(playlistsResult.data!);
       }
       
-      // Remove duplicates based on ID
+      // Remove duplicates; for music tracks, only keep those with preview
       final uniqueResults = <String, ContentItem>{};
       for (final item in results) {
-        uniqueResults[item.id] = item;
+        if (item.category == ContentCategory.playlist) {
+          uniqueResults[item.id] = item;
+        } else if (item.audioUrl != null && item.audioUrl!.isNotEmpty) {
+          uniqueResults[item.id] = item;
+        }
       }
       
       final finalResults = uniqueResults.values.take(maxResults).toList();
@@ -572,6 +698,19 @@ class ApiService {
       ).map((track) => ContentItem.fromSpotifyJson(track)).toList();
       return ApiResponse.success(mockTracks);
     }
+  }
+
+  List<String> _moodToSpotifyQueries(String mood) {
+    const map = {
+      'happy': ['happy', 'upbeat', 'party', 'cheerful'],
+      'sad': ['sad', 'melancholy', 'heartbreak'],
+      'calm': ['calm', 'chill', 'relax', 'meditation'],
+      'angry': ['angry', 'intense', 'aggressive'],
+      'fear': ['intense', 'suspense'],
+      'surprise': ['party', 'exciting'],
+      'disgust': ['intense'],
+    };
+    return map[mood.toLowerCase()] ?? [mood];
   }
 
   // Get unlimited TMDB content through multiple pages and queries
@@ -2548,37 +2687,44 @@ class ApiService {
   }
 
   List<ContentItem> _getMockSpotifyPlaylists(int limit) {
+    // Real Spotify playlist/album cover URLs (i.scdn.co) - like YouTube/TMDB previews
+    const playlistCovers = [
+      'https://i.scdn.co/image/ab67706f00000002784a1bd26f8787a5a0eef5a9', // Today's Top Hits
+      'https://i.scdn.co/image/ab67706f00000002c414e5a69eb2197bb2f132b6', // Discover Weekly
+      'https://i.scdn.co/image/ab67706f0000000285704160b49125ac95099ec8', // RapCaviar
+      'https://i.scdn.co/image/ab67706f00000002b55b6074ba1aa3bb5d11606b', // Rock Classics
+    ];
     final mockPlaylists = [
       {
         'id': 'spotify_playlist_1',
         'name': 'Today\'s Top Hits',
         'description': 'The most played songs right now',
-        'images': [],
-        'external_urls': {'spotify': 'https://open.spotify.com/playlist/1'},
+        'images': [{'url': playlistCovers[0], 'height': 300, 'width': 300}],
+        'external_urls': {'spotify': 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M'},
         'tracks': {'total': 50},
       },
       {
         'id': 'spotify_playlist_2',
         'name': 'Discover Weekly',
         'description': 'Your weekly mixtape of fresh music',
-        'images': [],
-        'external_urls': {'spotify': 'https://open.spotify.com/playlist/2'},
+        'images': [{'url': playlistCovers[1], 'height': 300, 'width': 300}],
+        'external_urls': {'spotify': 'https://open.spotify.com/playlist/37i9dQZEVXcJZyENOWUFc7'},
         'tracks': {'total': 30},
       },
       {
         'id': 'spotify_playlist_3',
         'name': 'RapCaviar',
         'description': 'New music from Drake, Kendrick Lamar, Cardi B and more',
-        'images': [],
-        'external_urls': {'spotify': 'https://open.spotify.com/playlist/3'},
+        'images': [{'url': playlistCovers[2], 'height': 300, 'width': 300}],
+        'external_urls': {'spotify': 'https://open.spotify.com/playlist/37i9dQZF1DX0XUsuxWHRQd'},
         'tracks': {'total': 60},
       },
       {
         'id': 'spotify_playlist_4',
         'name': 'Rock Classics',
         'description': 'Rock legends & epic songs that continue to inspire generations',
-        'images': [],
-        'external_urls': {'spotify': 'https://open.spotify.com/playlist/4'},
+        'images': [{'url': playlistCovers[3], 'height': 300, 'width': 300}],
+        'external_urls': {'spotify': 'https://open.spotify.com/playlist/37i9dQZF1DWXRqgorJj26U'},
         'tracks': {'total': 75},
       },
     ];

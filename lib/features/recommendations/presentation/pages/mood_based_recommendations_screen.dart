@@ -233,7 +233,7 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
         
         print('🎵 Fetching extended Spotify content...');
         final spotifyResult =
-            await _apiService.getUnlimitedSpotifyContent(maxResults: 60);
+            await _apiService.getUnlimitedSpotifyContent(maxResults: 60, mood: _selectedMood);
         if (spotifyResult.isSuccess && spotifyResult.data != null) {
           allContent.addAll(spotifyResult.data!);
           print('✅ Fetched ${spotifyResult.data!.length} Spotify items');
@@ -263,7 +263,7 @@ class _MoodBasedRecommendationsScreenState extends ConsumerState<MoodBasedRecomm
       } else if (_selectedCategory == 'music') {
         print('🎵 Fetching extended Spotify content...');
         final spotifyResult =
-            await _apiService.getUnlimitedSpotifyContent(maxResults: 60);
+            await _apiService.getUnlimitedSpotifyContent(maxResults: 60, mood: _selectedMood);
         if (spotifyResult.isSuccess && spotifyResult.data != null) {
           allContent.addAll(spotifyResult.data!);
           print('✅ Fetched ${spotifyResult.data!.length} Spotify items');

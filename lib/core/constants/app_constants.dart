@@ -5,12 +5,14 @@ class AppConstants {
   
   // API Keys
   static const String youtubeApiKey = 'AIzaSyDdwTVftDl6nRqRuofWlfx1p8-enTPNFnc';
-  static const String spotifyClientId = '071b9c2312f64b2495e7135f3dfbf317';
+  static const String spotifyClientId = '0f4d4f9ba3814ddcae4c3b902ef87526';
+  static const String spotifyClientSecret = 'a5e7c5415af94dd9b289c2b504c65bfa';
   static const String tmdbApiKey = '146bd026e1a4e8b5998458984ac771ce';
   
   // API Endpoints
   static const String youtubeBaseUrl = 'https://www.googleapis.com/youtube/v3';
   static const String spotifyBaseUrl = 'https://api.spotify.com/v1';
+  static const String spotifyTokenUrl = 'https://accounts.spotify.com/api/token';
   static const String tmdbBaseUrl = 'https://api.themoviedb.org/3';
   static const String tmdbImageBaseUrl = 'https://image.tmdb.org/t/p';
   

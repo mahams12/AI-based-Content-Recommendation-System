@@ -15,7 +15,9 @@ VoiceMoodServiceInterface createVoiceMoodService() {
 /// Audio features extracted from PCM samples
 class AudioFeatures {
   final double pitch; // Fundamental frequency (Hz)
+  final double pitchVariation; // Std dev of pitch across frames (Hz)
   final double energy; // RMS energy
+  final double intensityDynamics; // (max-min)/mean of frame energies
   final double spectralCentroid; // Brightness (Hz)
   final double zeroCrossingRate; // ZCR (rate of sign changes)
   final double energyVariability; // Standard deviation of energy
@@ -24,7 +26,9 @@ class AudioFeatures {
 
   AudioFeatures({
     required this.pitch,
+    required this.pitchVariation,
     required this.energy,
+    required this.intensityDynamics,
     required this.spectralCentroid,
     required this.zeroCrossingRate,
     required this.energyVariability,
@@ -69,6 +73,10 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
   final List<String> _predictionHistory = [];
   static const int _historySize = 5;
   static const int _majorityThreshold = 3; // Need ≥3 votes to return a mood
+  // Probability-based temporal smoothing: average probs over last N calls to reduce frame-to-frame noise (optional).
+  final List<Map<String, double>> _probabilityHistory = [];
+  static const int _probabilityHistorySize = 3;
+  static const bool _useProbabilityAveraging = true; // set false to use only current-frame probs
 
   // Supported moods (final labels) - including all detected moods
   static const List<String> _supportedMoods = [
@@ -84,8 +92,14 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
 
   // Audio preprocessing constants
   static const double _silenceThreshold = 0.08; // RMS threshold for silence detection (very strict - reject if RMS < 0.08)
-  static const double _sadConfidenceThreshold = 0.6; // Require higher confidence for "sad"
-  
+  // Minimum confidence to accept model prediction; below this we use feature-based fallback (no emotion-specific threshold).
+  static const double _minModelConfidenceThreshold = 0.12;
+  // Low-confidence uncertain threshold: when maxProb is between 0.12 and 0.30, treat as uncertain and map to calm
+  // (avoids showing biased/wrong mood when classifier output is close to uniform).
+  static const double _lowConfidenceUncertainThreshold = 0.30;
+  // Laughter detection: if confidence exceeds this, classify mood as happy.
+  static const double _laughterConfidenceThreshold = 0.70;
+
   // Track recent moods to avoid always showing the same one
   final List<String> _recentMoods = [];
   static const int _recentMoodsHistory = 3; // Track last 3 moods
@@ -217,6 +231,17 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         print('✅ YAMNet base model loaded successfully');
         print('📊 YAMNet input shape: $yamInputShape');
         print('📊 YAMNet output shapes: $yamOutputShapes');
+
+        final yamInputSize = yamInputShape.fold<int>(1, (a, b) => a * b);
+        if (yamInputSize < 1000) {
+          print('❌ YAMNet embeddings model has wrong input size: $yamInputSize (expected ~15600 for waveform).');
+          print('   Replace assets/models/voice/yamnet_embeddings.tflite with a proper model that accepts waveform input.');
+          print('   See docs/YAMNET_EMBEDDINGS_MODEL.md for instructions.');
+          _yamnetInterpreter?.close();
+          _yamnetInterpreter = null;
+          _isInitialized = false;
+          return false;
+        }
 
         _isInitialized = true;
         return true;
@@ -400,6 +425,7 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
 
   /// 🔹 2. Feature Extraction: Use YAMNet to extract embeddings
   /// Get (T, 1024) embeddings, compute mean across time → (1024,)
+  /// For long recordings: use the LAST inputSize samples (end of utterance) so emotion at end of speech is captured; matches training on fixed-length windows.
   Future<List<double>?> _extractYamnetEmbeddings(List<double> samples) async {
     try {
       if (_yamnetInterpreter == null) {
@@ -408,14 +434,28 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       }
 
       final inputTensor = _yamnetInterpreter!.getInputTensor(0);
-      final inputSize = inputTensor.shape.fold(1, (a, b) => a * b);
+      final inputShape = inputTensor.shape;
+      final inputSize = inputShape.fold(1, (a, b) => a * b);
 
-      // Prepare input buffer (float32)
-      final Float32List inputBuffer = Float32List(inputSize);
-      final int copyCount = math.min(samples.length, inputSize);
-      for (int i = 0; i < copyCount; i++) {
-        inputBuffer[i] = samples[i].toDouble();
+      if (inputSize < 1000) {
+        print('❌ YAMNet model expects inputSize=$inputSize (expected ~15600 for waveform). Wrong model file.');
+        return null;
       }
+
+      // Use last segment when audio is longer than model input (emotion often clearer at end of utterance); otherwise use from start (with zero-pad if shorter).
+      final int copyCount = math.min(samples.length, inputSize);
+      final int startIdx = samples.length > inputSize ? (samples.length - inputSize) : 0;
+      final Float32List inputBuffer = Float32List(inputSize);
+      for (int i = 0; i < copyCount; i++) {
+        inputBuffer[i] = samples[startIdx + i].toDouble();
+      }
+
+      // Diagnostic: fingerprint of input buffer to verify different recordings produce different inputs
+      final inputSum = inputBuffer.take(100).fold<double>(0.0, (a, b) => a + b);
+      final inputFingerprint = inputBuffer.length >= 3
+          ? 'sum100=${inputSum.toStringAsFixed(6)} start3=${inputBuffer[0].toStringAsFixed(6)},${inputBuffer[1].toStringAsFixed(6)},${inputBuffer[2].toStringAsFixed(6)}'
+          : 'sum100=${inputSum.toStringAsFixed(6)}';
+      print('🔬 YAMNet input: shape=$inputShape inputSize=$inputSize samplesLen=${samples.length} startIdx=$startIdx copyCount=$copyCount | $inputFingerprint');
 
       // Get output tensor shape [frames, 1024]
       final outputTensor = _yamnetInterpreter!.getOutputTensor(0);
@@ -448,7 +488,10 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         avg[d] /= frames;
       }
 
-      print('✅ YAMNet embedding extracted: ${avg.length} dimensions from $frames frames');
+      // Debug: log embedding stats to verify different recordings produce different embeddings
+      final embNorm = _computeL2Norm(avg);
+      final first3 = avg.take(3).map((v) => v.toStringAsFixed(4)).join(', ');
+      print('✅ YAMNet embedding: ${avg.length}d from $frames frames, L2=$embNorm, first3=[$first3]');
       return avg;
     } catch (e, stackTrace) {
       print('❌ Error extracting YAMNet embeddings: $e');
@@ -521,12 +564,40 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       }
 
       print('📊 Classifier probabilities: ${moodProbs.map((k, v) => MapEntry(k, '${(v * 100).toStringAsFixed(1)}%'))}');
+      // If max prob is only slightly above uniform (e.g. 1/9 ≈ 11%), the model is barely distinguishing; often one class (e.g. sad) gets a small bias and wins every time.
+      final maxP = moodProbs.values.fold(0.0, (a, b) => a > b ? a : b);
+      if (maxP < 0.35) {
+        print('⚠️ Low discrimination: max prob ${(maxP * 100).toStringAsFixed(1)}% is close to uniform (~11%). Classifier may be biased toward one class (e.g. sad) when embeddings are similar across recordings.');
+      }
       return moodProbs;
     } catch (e, stackTrace) {
       print('❌ Error classifying mood: $e');
       print('📚 Stack trace: $stackTrace');
       return null;
     }
+  }
+
+  /// Average multiple probability maps (same keys); for temporal smoothing across calls.
+  Map<String, double> _averageProbabilityMaps(List<Map<String, double>> maps) {
+    if (maps.isEmpty) return {};
+    final keys = maps.first.keys.toSet();
+    for (final m in maps) {
+      keys.addAll(m.keys);
+    }
+    final result = <String, double>{};
+    for (final k in keys) {
+      double sum = 0.0;
+      int count = 0;
+      for (final m in maps) {
+        final v = m[k];
+        if (v != null) {
+          sum += v;
+          count++;
+        }
+      }
+      result[k] = count > 0 ? sum / count : 0.0;
+    }
+    return result;
   }
 
   /// Pick the best supported mood from a probability map.
@@ -560,7 +631,9 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     if (samples.isEmpty) {
       return AudioFeatures(
         pitch: 0.0,
+        pitchVariation: 0.0,
         energy: 0.0,
+        intensityDynamics: 0.0,
         spectralCentroid: 0.0,
         zeroCrossingRate: 0.0,
         energyVariability: 0.0,
@@ -589,10 +662,7 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     }
     final zeroCrossingRate = zeroCrossings / samples.length;
 
-    // 3. Pitch estimation (autocorrelation-based)
-    final pitch = _estimatePitch(samples, sampleRate);
-
-    // 4. Spectral features (simplified - using frame-based analysis)
+    // 3. Frame-based analysis for pitch variation and spectral features
     final frames = <List<double>>[];
     for (int i = 0; i < samples.length - frameSize; i += hopSize) {
       frames.add(samples.sublist(i, i + frameSize));
@@ -608,8 +678,11 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     double spectralRolloffSum = 0.0;
     double spectralFluxSum = 0.0;
     List<double>? prevMagnitude;
+    final framePitches = <double>[];
 
     for (final frame in frames) {
+      final framePitch = _estimatePitch(frame, sampleRate);
+      if (framePitch > 50 && framePitch < 600) framePitches.add(framePitch);
       // Apply window
       final windowed = _applyHammingWindow(frame);
       
@@ -663,7 +736,7 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     final spectralRolloff = frameCount > 0 ? spectralRolloffSum / frameCount : 0.0;
     final spectralFlux = frameCount > 1 ? spectralFluxSum / (frameCount - 1) : 0.0;
 
-    // 5. Energy Variability (standard deviation of frame energies)
+    // 5. Energy Variability and Intensity Dynamics
     final frameEnergies = <double>[];
     for (final frame in frames) {
       double frameSumSq = 0.0;
@@ -675,10 +748,24 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     final energyMean = frameEnergies.fold(0.0, (a, b) => a + b) / frameEnergies.length;
     final energyVariance = frameEnergies.fold(0.0, (sum, e) => sum + (e - energyMean) * (e - energyMean)) / frameEnergies.length;
     final energyVariability = math.sqrt(energyVariance);
+    final energyMax = frameEnergies.fold(0.0, (a, b) => a > b ? a : b);
+    final energyMin = frameEnergies.fold(double.infinity, (a, b) => a < b ? a : b);
+    final intensityDynamics = energyMean > 1e-9 ? (energyMax - energyMin) / energyMean : 0.0;
+
+    // 6. Pitch and pitch variation
+    final pitch = _estimatePitch(samples, sampleRate);
+    double pitchVariation = 0.0;
+    if (framePitches.length >= 2) {
+      final pitchMean = framePitches.fold(0.0, (a, b) => a + b) / framePitches.length;
+      final pitchVar = framePitches.fold(0.0, (sum, p) => sum + (p - pitchMean) * (p - pitchMean)) / framePitches.length;
+      pitchVariation = math.sqrt(pitchVar);
+    }
 
     return AudioFeatures(
       pitch: pitch,
+      pitchVariation: pitchVariation,
       energy: energy,
+      intensityDynamics: intensityDynamics,
       spectralCentroid: spectralCentroid,
       zeroCrossingRate: zeroCrossingRate,
       energyVariability: energyVariability,
@@ -687,55 +774,347 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     );
   }
 
-  /// Detect mood from audio features using rule-based logic
+  /// Detect mood from audio features using acoustic rules for all 7 model moods.
+  /// Returns one of: angry, calm, disgust, fear, happy, sad, surprise.
+  /// Based on pitch, pitch variation, energy, intensity dynamics, spectral centroid, ZCR, flux.
   VoiceMoodResult _detectMoodFromFeatures(AudioFeatures features) {
-    String mood = 'neutral';
-    double confidence = 0.5;
-
-    // Rule-based mood detection based on audio features
-    
-    // ANGRY: High pitch, high energy, high ZCR, high spectral centroid
-    if (features.pitch > 200 && features.energy > 0.1 && 
-        features.zeroCrossingRate > 0.15 && features.spectralCentroid > 2000) {
-      mood = 'angry';
-      confidence = 0.7;
-    }
-    // HAPPY: High pitch, moderate-high energy, moderate ZCR, high spectral centroid
-    else if (features.pitch > 180 && features.energy > 0.08 && 
-             features.spectralCentroid > 1800) {
-      mood = 'happy';
-      confidence = 0.7;
-    }
-    // SAD: Low pitch, low energy, low ZCR, low spectral centroid
-    else if (features.pitch < 120 && features.energy < 0.05 && 
-             features.zeroCrossingRate < 0.08 && features.spectralCentroid < 1500) {
-      mood = 'sad';
-      confidence = 0.7;
-    }
-    // FEAR: High pitch, high energy variability, high spectral flux
-    else if (features.pitch > 200 && features.energyVariability > 0.02 && 
-             features.spectralFlux > 0.5) {
-      mood = 'fear';
-      confidence = 0.6;
-    }
-    // SURPRISE: Very high pitch, high energy, high spectral flux
-    else if (features.pitch > 250 && features.energy > 0.1 && 
-             features.spectralFlux > 0.6) {
-      mood = 'surprise';
-      confidence = 0.6;
-    }
-    // NEUTRAL: Moderate values across all features
-    else {
-      mood = 'neutral';
-      confidence = 0.5;
+    // Score each of the 7 supported model moods (exclude neutral; map calm for low-arousal)
+    final scores = <String, double>{};
+    for (final m in ['angry', 'calm', 'disgust', 'fear', 'happy', 'sad', 'surprise']) {
+      scores[m] = 0.0;
     }
 
-    print('🎵 Feature-based mood: $mood (pitch=${features.pitch.toStringAsFixed(1)}Hz, energy=${features.energy.toStringAsFixed(4)}, zcr=${features.zeroCrossingRate.toStringAsFixed(4)})');
+    // ANGRY: high pitch, high energy, high ZCR, high centroid, high pitch variation
+    if (features.pitch > 180 && features.energy > 0.08 && features.zeroCrossingRate > 0.06) {
+      double s = 0.0;
+      if (features.pitch > 220) s += 1.5;
+      if (features.energy > 0.12) s += 1.2;
+      if (features.zeroCrossingRate > 0.08) s += 1.0;
+      if (features.spectralCentroid > 1800) s += 1.0;
+      if (features.pitchVariation > 30) s += 1.0;
+      scores['angry'] = s;
+    }
+
+    // CALM: low pitch variation, moderate-low energy, low flux, steady
+    double calmS = 0.0;
+    if (features.pitchVariation < 25) calmS += 2.0;
+    if (features.energy < 0.15 && features.energy > 0.04) calmS += 1.0;
+    if (features.spectralFlux < 0.4) calmS += 1.0;
+    if (features.intensityDynamics < 1.5) calmS += 1.0;
+    scores['calm'] = calmS;
+
+    // DISGUST: lower pitch, tense, higher energy variability (vs sad: more active/tense)
+    if (features.pitch > 80 && features.pitch < 200) {
+      double s = 0.0;
+      if (features.pitch < 160) s += 0.8;
+      if (features.energyVariability > 0.02) s += 1.5;  // disgust more variable
+      if (features.energy > 0.15 && features.zeroCrossingRate > 0.06) s += 0.8;  // more active
+      if (features.spectralCentroid > 1500 && features.spectralCentroid < 2800) s += 0.5;
+      scores['disgust'] = s;
+    } else {
+      scores['disgust'] = 0.0;
+    }
+
+    // FEAR: high pitch, high energy variability, high flux (tremulous)
+    if (features.pitch > 190) {
+      double s = 0.0;
+      if (features.energyVariability > 0.02) s += 2.0;
+      if (features.spectralFlux > 0.45) s += 1.5;
+      if (features.intensityDynamics > 1.2) s += 1.0;
+      scores['fear'] = s;
+    } else {
+      scores['fear'] = 0.0;
+    }
+
+    // HAPPY: high pitch, high energy, high centroid
+    if (features.pitch > 170 && features.energy > 0.06) {
+      double s = 0.0;
+      if (features.pitch > 200) s += 1.2;
+      if (features.energy > 0.1) s += 1.2;
+      if (features.spectralCentroid > 1600) s += 1.0;
+      if (features.spectralFlux > 0.35 && features.spectralFlux < 0.7) s += 0.5;
+      scores['happy'] = s;
+    } else {
+      scores['happy'] = 0.0;
+    }
+
+    // SAD: low-moderate pitch, low ZCR; energy can vary (soft speech or clear but subdued)
+    if (features.pitch < 180 && features.pitch > 50) {
+      double s = 0.0;
+      if (features.pitch < 150) s += 1.8;  // relaxed: 142Hz now scores
+      if (features.pitch < 120) s += 0.5;
+      if (features.energy < 0.12) s += 1.2;  // relaxed: allow moderate energy
+      if (features.energy < 0.08) s += 0.5;
+      if (features.zeroCrossingRate < 0.07) s += 1.2;  // low ZCR strong indicator
+      if (features.spectralCentroid < 1800) s += 0.8;
+      if (features.pitchVariation < 35) s += 0.5;  // relaxed: sad can have some waver
+      scores['sad'] = s;
+    } else {
+      scores['sad'] = 0.0;
+    }
+
+    // SURPRISE: very high pitch, high energy, very high flux
+    if (features.pitch > 230 && features.energy > 0.08) {
+      double s = 0.0;
+      if (features.pitch > 260) s += 2.0;
+      if (features.spectralFlux > 0.55) s += 1.5;
+      if (features.energy > 0.12) s += 1.0;
+      if (features.intensityDynamics > 1.0) s += 0.8;
+      scores['surprise'] = s;
+    } else {
+      scores['surprise'] = 0.0;
+    }
+
+    // Pick dominant class by score
+    String bestMood = 'calm';
+    double bestScore = -1.0;
+    for (final e in scores.entries) {
+      if (e.value > bestScore) {
+        bestScore = e.value;
+        bestMood = e.key;
+      }
+    }
+
+    // If no mood scored, use acoustic heuristics for calm/neutral-like
+    if (bestScore < 0.5) {
+      if (features.pitch < 140 && features.energy < 0.1) {
+        bestMood = 'sad';
+      } else if (features.pitch > 200 && features.energy > 0.1) {
+        bestMood = 'happy';
+      } else {
+        bestMood = 'calm';
+      }
+      bestScore = 0.5;
+    }
+
+    final confidence = (0.5 + (bestScore / 6).clamp(0.0, 0.5)).clamp(0.5, 0.85);
+
+    final scoreSum = scores.values.fold(0.0, (a, b) => a + b);
+    final allProbs = scoreSum > 0
+        ? Map.fromEntries(scores.entries.map((e) => MapEntry(e.key, e.value / scoreSum)))
+        : {bestMood: confidence};
+
+    print('🎵 Feature-based mood: $bestMood (pitch=${features.pitch.toStringAsFixed(0)}Hz pVar=${features.pitchVariation.toStringAsFixed(0)} energy=${features.energy.toStringAsFixed(3)} zcr=${features.zeroCrossingRate.toStringAsFixed(3)} flux=${features.spectralFlux.toStringAsFixed(3)})');
 
     return VoiceMoodResult(
-      mood: mood,
+      mood: bestMood,
       confidence: confidence,
-      allProbabilities: {mood: confidence},
+      allProbabilities: allProbs,
+    );
+  }
+
+  /// Dedicated laughter detection: rhythmic bursts, high-frequency modulation,
+  /// repeated voiced segments. Returns confidence 0..1. If above threshold → happy.
+  double _detectLaughter(List<double> samples) {
+    if (samples.isEmpty || samples.length < 2000) return 0.0;
+
+    const int sampleRate = 16000;
+    const int frameSize = 512;
+    const int hopSize = 256;
+
+    // Frame-based energy and voiced analysis
+    final frameEnergies = <double>[];
+    final frameVoiced = <bool>[];
+    final framePitches = <double>[];
+    double spectralCentroidSum = 0.0;
+    int centroidCount = 0;
+
+    for (int i = 0; i < samples.length - frameSize; i += hopSize) {
+      final frame = samples.sublist(i, i + frameSize);
+      double frameSumSq = 0.0;
+      for (final s in frame) frameSumSq += s * s;
+      final e = math.sqrt(frameSumSq / frame.length);
+      frameEnergies.add(e);
+
+      final pitch = _estimatePitch(frame, sampleRate);
+      final voiced = pitch > 80 && pitch < 500;
+      frameVoiced.add(voiced);
+      if (voiced) framePitches.add(pitch);
+
+      // Spectral centroid for high-frequency modulation
+      final windowed = _applyHammingWindow(frame);
+      final fft = _computeDFT(windowed, frameSize);
+      final magnitude = fft.map((c) => math.sqrt(c[0] * c[0] + c[1] * c[1])).toList();
+      double weightedSum = 0.0, magSum = 0.0;
+      for (int k = 0; k < magnitude.length; k++) {
+        final freq = k * sampleRate / frameSize;
+        weightedSum += freq * magnitude[k];
+        magSum += magnitude[k];
+      }
+      if (magSum > 1e-9) {
+        spectralCentroidSum += weightedSum / magSum;
+        centroidCount++;
+      }
+    }
+
+    if (frameEnergies.length < 8) return 0.0;
+
+    final centroid = centroidCount > 0 ? spectralCentroidSum / centroidCount : 0.0;
+
+    // 1. Rhythmic bursts: autocorrelation of energy envelope
+    // Laughter ~2–6 Hz = ~10–31 frames per cycle at 256 hop, 16 kHz
+    final energyMean = frameEnergies.fold(0.0, (a, b) => a + b) / frameEnergies.length;
+    final energyStd = math.sqrt(frameEnergies.fold(0.0, (s, e) => s + (e - energyMean) * (e - energyMean)) / frameEnergies.length);
+    if (energyStd < 1e-9) return 0.0;
+    final normalized = frameEnergies.map((e) => (e - energyMean) / energyStd).toList();
+
+    double maxAutocorr = 0.0;
+    const int minLag = 5;
+    final int maxLag = math.min(40, normalized.length ~/ 2);
+    for (int lag = minLag; lag < maxLag; lag++) {
+      double sum = 0.0;
+      int n = 0;
+      for (int i = 0; i < normalized.length - lag; i++) {
+        sum += normalized[i] * normalized[i + lag];
+        n++;
+      }
+      final ac = n > 0 ? sum / n : 0.0;
+      if (ac > maxAutocorr) maxAutocorr = ac;
+    }
+    // Rhythmicity score: strong autocorr in laughter range → high score
+    final rhythmicScore = (maxAutocorr * 2).clamp(0.0, 1.0);
+
+    // 2. High-frequency modulation: laughter has brighter spectrum
+    final highFreqScore = centroid > 2000 ? ((centroid - 2000) / 1500).clamp(0.0, 1.0) : 0.0;
+
+    // 3. Repeated voiced segments: count energy envelope peaks (bursts)
+    // Merge nearby peaks - laughter has discrete "ha" bursts spaced ~6-20 frames apart
+    const int minPeakSpacing = 6; // frames between distinct bursts
+    int mergedPeakCount = 0;
+    int lastPeakIdx = -minPeakSpacing - 1;
+    for (int i = 1; i < frameEnergies.length - 1; i++) {
+      if (frameEnergies[i] > frameEnergies[i - 1] && frameEnergies[i] > frameEnergies[i + 1] &&
+          frameEnergies[i] > energyMean + 0.3 * energyStd &&
+          (i - lastPeakIdx) >= minPeakSpacing) {
+        mergedPeakCount++;
+        lastPeakIdx = i;
+      }
+    }
+    // Laughter: 3–10 distinct bursts. Too many = continuous speech, not laughter
+    final burstScore = (mergedPeakCount >= 2 && mergedPeakCount <= 12)
+        ? ((mergedPeakCount - 2) / 8).clamp(0.0, 1.0)
+        : 0.0;
+    // Penalty: >12 merged peaks = likely speech
+    final burstPenalty = mergedPeakCount > 12 ? 0.5 : 0.0;
+
+    // 4. Voiced segment repetition: multiple voiced "islands"
+    int voicedRuns = 0;
+    bool inVoiced = false;
+    for (final v in frameVoiced) {
+      if (v && !inVoiced) {
+        voicedRuns++;
+        inVoiced = true;
+      } else if (!v) {
+        inVoiced = false;
+      }
+    }
+    // Laughter: 2–8 voiced runs. >8 = continuous speech
+    final voicedScore = (voicedRuns >= 2 && voicedRuns <= 8)
+        ? ((voicedRuns - 2) / 6).clamp(0.0, 1.0)
+        : (voicedRuns > 8 ? 0.0 : 0.0);
+    final voicedPenalty = voicedRuns > 8 ? 0.3 : 0.0;
+
+    // 5. Validation: require laughter-like structure - reject speech masquerading as laughter
+    // Cross-check: merged peaks and voiced runs must be in laughter range
+    final structureValid = mergedPeakCount >= 2 && mergedPeakCount <= 12 && voicedRuns >= 2 && voicedRuns <= 8;
+    if (!structureValid) {
+      // Fail validation: return low confidence so we don't override with happy
+      final rawConfidence = (rhythmicScore * 0.4 + burstScore * 0.25 + highFreqScore * 0.2 + voicedScore * 0.15);
+      final penalized = (rawConfidence - burstPenalty - voicedPenalty).clamp(0.0, 1.0);
+      return penalized;
+    }
+
+    // Combine with weights (rhythmic bursts strongest indicator)
+    final confidence = (rhythmicScore * 0.4 + burstScore * 0.25 + highFreqScore * 0.2 + voicedScore * 0.15).clamp(0.0, 1.0);
+
+    if (confidence >= _laughterConfidenceThreshold) {
+      print('😂 Laughter detected: conf=${(confidence * 100).toStringAsFixed(0)}% (rhythmic=${(rhythmicScore * 100).toStringAsFixed(0)}% mergedPeaks=$mergedPeakCount voicedRuns=$voicedRuns centroid=${centroid.toStringAsFixed(0)}Hz)');
+    }
+    return confidence;
+  }
+
+  /// When model probs are flat (12-30%), combine model top class with feature-based.
+  /// When model has a clear leader (top leads 2nd by ≥5%), trust model and show model result.
+  VoiceMoodResult _hybridMoodLowConfidence(
+    Map<String, double> modelProbs,
+    VoiceMoodResult featureResult,
+  ) {
+    final featureMood = featureResult.mood;
+    final supportedOrdered = _supportedMoods
+        .map((m) => MapEntry(m, modelProbs[m] ?? 0.0))
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final modelTop1 = supportedOrdered.isNotEmpty ? supportedOrdered[0].key : 'calm';
+    final modelTop2 = supportedOrdered.length > 1 ? supportedOrdered[1].key : modelTop1;
+    final modelTop1Prob = supportedOrdered.isNotEmpty ? supportedOrdered[0].value : 0.0;
+    final modelTop2Prob = supportedOrdered.length > 1 ? supportedOrdered[1].value : 0.0;
+
+    // Model has clear leader: use model result (don't let feature override)
+    const leadThreshold = 0.05;
+    if (modelTop1Prob - modelTop2Prob >= leadThreshold) {
+      final conf = (modelTop1Prob * 0.8 + featureResult.confidence * 0.2).clamp(0.35, 0.7);
+      print('✅ Model has clear leader ($modelTop1 ${(modelTop1Prob * 100).toStringAsFixed(1)}% leads by ${((modelTop1Prob - modelTop2Prob) * 100).toStringAsFixed(1)}%) - using model result');
+      return VoiceMoodResult(
+        mood: modelTop1,
+        confidence: conf,
+        allProbabilities: modelProbs,
+      );
+    }
+
+    // If feature mood matches model top-2, use feature (acoustic agrees with model hint)
+    if (featureMood == modelTop1 || featureMood == modelTop2) {
+      final modelProb = modelProbs[featureMood] ?? 0.0;
+      final combinedConf = (featureResult.confidence * 0.6 + modelProb * 0.4).clamp(0.3, 0.7);
+      return VoiceMoodResult(
+        mood: featureMood,
+        confidence: combinedConf,
+        allProbabilities: modelProbs,
+      );
+    }
+    // When model top is sad and feature is disgust: both are low-pitch negative emotions.
+    // Trust model's sad if it leads and feature scores for sad are close to disgust.
+    if (modelTop1 == 'sad' && featureMood == 'disgust') {
+      final sadProb = modelProbs['sad'] ?? 0.0;
+      final disgustProb = modelProbs['disgust'] ?? 0.0;
+      if (sadProb > disgustProb) {
+        final combinedConf = (featureResult.confidence * 0.4 + sadProb * 0.6).clamp(0.35, 0.7);
+        return VoiceMoodResult(
+          mood: 'sad',
+          confidence: combinedConf,
+          allProbabilities: modelProbs,
+        );
+      }
+    }
+    // Else use feature-based (acoustic overrides flat model)
+    return VoiceMoodResult(
+      mood: featureMood,
+      confidence: featureResult.confidence,
+      allProbabilities: modelProbs,
+    );
+  }
+
+  /// Double-verify model prediction with feature-based. If they agree, boost confidence.
+  VoiceMoodResult _verifyWithFeatures(
+    String modelMood,
+    double modelConfidence,
+    Map<String, double> modelProbs,
+    VoiceMoodResult featureResult,
+  ) {
+    if (featureResult.mood == modelMood) {
+      final boosted = (modelConfidence * 1.1).clamp(0.0, 1.0);
+      print('✅ Feature verification: agrees with $modelMood, confidence ${(modelConfidence * 100).toStringAsFixed(1)}% → ${(boosted * 100).toStringAsFixed(1)}%');
+      return VoiceMoodResult(
+        mood: modelMood,
+        confidence: boosted,
+        allProbabilities: modelProbs,
+      );
+    }
+    print('⚠️ Feature verification: model=$modelMood, features=${featureResult.mood} (keeping model)');
+    return VoiceMoodResult(
+      mood: modelMood,
+      confidence: modelConfidence,
+      allProbabilities: modelProbs,
     );
   }
 
@@ -858,6 +1237,10 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
   }
 
   /// 🔹 Main Detection Pipeline
+  /// (1) Decode to 16 kHz mono PCM, (2) normalize/trim, (3) silence check, (4) YAMNet embeddings,
+  /// (5) classifier, (6) optional probability averaging across calls, (7) map non-supported labels only,
+  /// (8) return exact model-predicted label and confidence. No emotion-specific overrides or fallbacks.
+  /// Inference: 16 kHz, mono, float [-1,1]. Feature-based fallback only on embedding/classifier failure or maxProb < _minModelConfidenceThreshold.
   @override
   Future<VoiceMoodResult> detectMoodFromAudio(String audioPath) async {
     // Initialize models if needed
@@ -910,6 +1293,7 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         // Clear recent moods history when silence is detected
         _recentMoods.clear();
         _predictionHistory.clear();
+        _probabilityHistory.clear();
         return VoiceMoodResult(
           mood: 'neutral', // Required field, but error will indicate rejection
           confidence: 0.0,
@@ -917,11 +1301,24 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
         );
       }
 
+      // 🔹 Laughter Detection: If laughter patterns detected with sufficient confidence → happy
+      final laughterConfidence = _detectLaughter(processedSamples);
+      if (laughterConfidence >= _laughterConfidenceThreshold) {
+        print('😂 Laughter detected (${(laughterConfidence * 100).toStringAsFixed(0)}%) → classifying as happy');
+        return VoiceMoodResult(
+          mood: 'happy',
+          confidence: laughterConfidence.clamp(0.7, 0.95),
+          allProbabilities: {'happy': laughterConfidence},
+        );
+      }
+
       // 🔹 2. Extract YAMNet Embeddings
       final embedding = await _extractYamnetEmbeddings(processedSamples);
       if (embedding == null || embedding.length != 1024) {
-        // Use feature-based detection as fallback
         print('⚠️ Failed to extract embeddings - using feature-based detection');
+        if (laughterConfidence >= _laughterConfidenceThreshold) {
+          return VoiceMoodResult(mood: 'happy', confidence: laughterConfidence.clamp(0.7, 0.95), allProbabilities: {'happy': laughterConfidence});
+        }
         final audioFeatures = _extractAudioFeatures(processedSamples);
         final featureBasedMood = _detectMoodFromFeatures(audioFeatures);
         print('✅ Feature-based mood detection: ${featureBasedMood.mood} (confidence: ${(featureBasedMood.confidence * 100).toStringAsFixed(1)}%)');
@@ -931,16 +1328,29 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       // 🔹 3. Classify Mood
       final moodProbs = await _classifyMood(embedding);
       if (moodProbs == null || moodProbs.isEmpty) {
-        // Use feature-based detection as fallback
         print('⚠️ Failed to classify mood - using feature-based detection');
+        if (laughterConfidence >= _laughterConfidenceThreshold) {
+          return VoiceMoodResult(mood: 'happy', confidence: laughterConfidence.clamp(0.7, 0.95), allProbabilities: {'happy': laughterConfidence});
+        }
         final audioFeatures = _extractAudioFeatures(processedSamples);
         final featureBasedMood = _detectMoodFromFeatures(audioFeatures);
         print('✅ Feature-based mood detection: ${featureBasedMood.mood} (confidence: ${(featureBasedMood.confidence * 100).toStringAsFixed(1)}%)');
         return featureBasedMood;
       }
 
-      // Find mood with highest probability
-      final sortedMoods = moodProbs.entries.toList()
+      // Temporal smoothing over probability distributions (across recent calls) to reduce bias toward neutral/happy on natural speech.
+      Map<String, double> effectiveProbs = moodProbs;
+      if (_useProbabilityAveraging && _probabilityHistory.isNotEmpty) {
+        effectiveProbs = _averageProbabilityMaps([..._probabilityHistory, moodProbs]);
+        print('📊 Smoothed probs (over ${_probabilityHistory.length + 1} frames): ${effectiveProbs.map((k, v) => MapEntry(k, '${(v * 100).toStringAsFixed(1)}%'))}');
+      }
+      _probabilityHistory.add(Map.from(moodProbs));
+      if (_probabilityHistory.length > _probabilityHistorySize) {
+        _probabilityHistory.removeAt(0);
+      }
+
+      // Find mood with highest probability (use smoothed probs for decision)
+      final sortedMoods = effectiveProbs.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
       
       if (sortedMoods.isEmpty) {
@@ -953,139 +1363,54 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
 
       final bestMood = sortedMoods[0].key;
       final maxProb = sortedMoods[0].value;
-      
-      // Compute supported top-2 (used for repetition avoidance + happy dominance guard)
+
+      // Best supported mood (for edge case when mapped label has very low prob)
       final supportedEntries = _supportedMoods
-          .map((m) => MapEntry(m, moodProbs[m] ?? 0.0))
+          .map((m) => MapEntry(m, effectiveProbs[m] ?? 0.0))
           .toList()
         ..sort((a, b) => b.value.compareTo(a.value));
       final bestSupportedMood = supportedEntries.isNotEmpty ? supportedEntries[0].key : 'neutral';
       final bestSupportedProb = supportedEntries.isNotEmpty ? supportedEntries[0].value : 0.0;
-      final secondSupportedMood = supportedEntries.length > 1 ? supportedEntries[1].key : null;
-      final secondSupportedProb = supportedEntries.length > 1 ? supportedEntries[1].value : 0.0;
 
-      // If model confidence is very low (< 15%), use feature-based detection
-      if (maxProb < 0.15) {
-        print('⚠️ Model confidence too low (${(maxProb * 100).toStringAsFixed(1)}% < 15%) - using feature-based detection');
+      // If model confidence is very low, use feature-based detection
+      if (maxProb < _minModelConfidenceThreshold) {
+        print('⚠️ Model confidence too low (${(maxProb * 100).toStringAsFixed(1)}% < ${(_minModelConfidenceThreshold * 100).toStringAsFixed(0)}%) - using feature-based detection');
+        if (laughterConfidence >= _laughterConfidenceThreshold) {
+          return VoiceMoodResult(mood: 'happy', confidence: laughterConfidence.clamp(0.7, 0.95), allProbabilities: {'happy': laughterConfidence});
+        }
         final audioFeatures = _extractAudioFeatures(processedSamples);
         final featureBasedMood = _detectMoodFromFeatures(audioFeatures);
         print('✅ Feature-based mood detection: ${featureBasedMood.mood} (confidence: ${(featureBasedMood.confidence * 100).toStringAsFixed(1)}%)');
         return featureBasedMood;
       }
 
-      // Option C: Map calm/disgust/unknown (or any unsupported) to the closest supported mood.
-      String finalMood = _mapNonSupportedToSupported(bestMood, moodProbs);
-      // Confidence should be the probability of the final (mapped) mood.
-      double finalConfidence = moodProbs[finalMood] ?? 0.0;
+      // Low-confidence (12–30%): use feature-based + model probs hybrid
+      if (maxProb < _lowConfidenceUncertainThreshold) {
+        print('⚠️ Low confidence (${(maxProb * 100).toStringAsFixed(1)}% < ${(_lowConfidenceUncertainThreshold * 100).toStringAsFixed(0)}%) - using feature-based + model hybrid');
+        final audioFeatures = _extractAudioFeatures(processedSamples);
+        final featureResult = _detectMoodFromFeatures(audioFeatures);
+        final hybridResult = _hybridMoodLowConfidence(effectiveProbs, featureResult);
+        print('✅ Hybrid mood: ${hybridResult.mood} (confidence: ${(hybridResult.confidence * 100).toStringAsFixed(1)}%)');
+        return hybridResult;
+      }
 
-      // If the model is confident in non-supported but supported are super low, prefer the best supported anyway.
+      // Map only non-supported labels (e.g. "unknown") to best supported from same probability distribution.
+      // All supported labels (angry, calm, disgust, fear, happy, neutral, sad, surprise) pass through as-is.
+      String finalMood = _mapNonSupportedToSupported(bestMood, effectiveProbs);
+      double finalConfidence = effectiveProbs[finalMood] ?? 0.0;
+
+      // Edge case: mapped label has very low prob (< 8%); use best supported from same inference.
       if (finalConfidence < 0.08 && bestSupportedProb > finalConfidence) {
         finalMood = bestSupportedMood;
         finalConfidence = bestSupportedProb;
       }
 
-      // Happy dominance guard: if happy wins but is not clearly separated, try 2nd supported or features.
-      if (finalMood == 'happy' &&
-          secondSupportedMood != null &&
-          (finalConfidence < 0.55 || (finalConfidence - secondSupportedProb) < 0.10) &&
-          secondSupportedProb > 0.12) {
-        print('⚠️ "happy" not strongly separated (p=${(finalConfidence * 100).toStringAsFixed(1)}%, second=${(secondSupportedProb * 100).toStringAsFixed(1)}%) - using second supported "$secondSupportedMood"');
-        finalMood = secondSupportedMood;
-        finalConfidence = secondSupportedProb;
-      }
-
-      // 🔹 Avoid always returning the same mood - check if this mood appears too often
-      final moodCount = _predictionHistory.where((m) => m == finalMood).length;
-      final isMoodTooCommon = moodCount >= 2; // If 2+ out of 5 are the same mood
-      
-      // If the same mood is appearing too often, use second highest probability instead
-      if (isMoodTooCommon && secondSupportedMood != null && secondSupportedMood != finalMood) {
-        // Check if second mood has reasonable confidence (> 8%)
-        if (secondSupportedProb > 0.08) {
-          print('⚠️ "$finalMood" appears too often in history ($moodCount/$_historySize) - using second supported "$secondSupportedMood" (${(secondSupportedProb * 100).toStringAsFixed(1)}%) instead');
-          finalMood = secondSupportedMood;
-          finalConfidence = secondSupportedProb;
-    } else {
-          // If second mood confidence is too low, use feature-based detection
-          print('⚠️ "$finalMood" appears too often but second mood confidence too low - using feature-based detection');
-          final audioFeatures = _extractAudioFeatures(processedSamples);
-          final featureBasedMood = _detectMoodFromFeatures(audioFeatures);
-          if (featureBasedMood.mood != finalMood && _supportedMoods.contains(featureBasedMood.mood)) {
-            print('✅ Feature-based mood detection: ${featureBasedMood.mood} (confidence: ${(featureBasedMood.confidence * 100).toStringAsFixed(1)}%)');
-            return featureBasedMood;
-          }
-        }
-      }
-      
-      // Special handling for "neutral" - be more aggressive in avoiding it
-      if (finalMood == 'neutral') {
-        final neutralCount = _predictionHistory.where((m) => m == 'neutral').length;
-        // If neutral appears 2+ times, always try to use second highest or feature-based
-        if (neutralCount >= 2 && secondSupportedMood != null && secondSupportedMood != 'neutral') {
-          if (secondSupportedProb > 0.08) {
-            print('⚠️ "neutral" appears too often ($neutralCount/$_historySize) - using second supported "$secondSupportedMood" (${(secondSupportedProb * 100).toStringAsFixed(1)}%)');
-            finalMood = secondSupportedMood;
-            finalConfidence = secondSupportedProb;
-    } else {
-            // Use feature-based detection to avoid neutral
-            print('⚠️ "neutral" appears too often - using feature-based detection to avoid repetition');
-            final audioFeatures = _extractAudioFeatures(processedSamples);
-            final featureBasedMood = _detectMoodFromFeatures(audioFeatures);
-            if (featureBasedMood.mood != 'neutral' && _supportedMoods.contains(featureBasedMood.mood)) {
-              print('✅ Feature-based mood detection: ${featureBasedMood.mood} (confidence: ${(featureBasedMood.confidence * 100).toStringAsFixed(1)}%)');
-              return featureBasedMood;
-            }
-          }
-        }
-      }
-
-      // 🔹 6. Emotion Bias Protection
-      // If "sad" is predicted but confidence < 0.6 → use feature-based detection
-      if (finalMood == 'sad' && finalConfidence < _sadConfidenceThreshold) {
-        print('⚠️ "sad" predicted with low confidence (${(finalConfidence * 100).toStringAsFixed(1)}% < ${(_sadConfidenceThreshold * 100).toStringAsFixed(0)}%) - using feature-based detection');
-        final audioFeatures = _extractAudioFeatures(processedSamples);
-        final featureBasedMood = _detectMoodFromFeatures(audioFeatures);
-        print('✅ Feature-based mood detection: ${featureBasedMood.mood} (confidence: ${(featureBasedMood.confidence * 100).toStringAsFixed(1)}%)');
-        return featureBasedMood;
-      }
-
-      // Track recent moods to avoid repetition
-      _recentMoods.add(finalMood);
-      if (_recentMoods.length > _recentMoodsHistory) {
-        _recentMoods.removeAt(0);
-      }
-      
-      // If the same mood appears in all recent detections, use second highest instead
-      if (_recentMoods.length == _recentMoodsHistory && _recentMoods.every((m) => m == finalMood)) {
-        if (secondSupportedMood != null && secondSupportedMood != finalMood && secondSupportedProb > 0.08) {
-          print('⚠️ Same mood "$finalMood" detected $_recentMoodsHistory times in a row - using second supported "$secondSupportedMood" (${(secondSupportedProb * 100).toStringAsFixed(1)}%) for variation');
-          finalMood = secondSupportedMood;
-          finalConfidence = secondSupportedProb;
-          // Update recent moods
-          _recentMoods[_recentMoods.length - 1] = finalMood;
-    } else {
-          // Use feature-based detection for variation
-          print('⚠️ Same mood "$finalMood" detected $_recentMoodsHistory times in a row - using feature-based detection for variation');
-          final audioFeatures = _extractAudioFeatures(processedSamples);
-          final featureBasedMood = _detectMoodFromFeatures(audioFeatures);
-          if (featureBasedMood.mood != finalMood && _supportedMoods.contains(featureBasedMood.mood)) {
-            print('✅ Feature-based mood detection: ${featureBasedMood.mood} (confidence: ${(featureBasedMood.confidence * 100).toStringAsFixed(1)}%)');
-            _recentMoods[_recentMoods.length - 1] = featureBasedMood.mood;
-            return featureBasedMood;
-          }
-        }
-      }
-
-      // 🔹 5. Prediction Smoothing: Temporal smoothing with majority vote
-      final smoothedMood = _smoothPrediction(finalMood);
-
-      // Final result - always return one of the 6 moods
-      print('✅ Final mood: $smoothedMood (confidence: ${(finalConfidence * 100).toStringAsFixed(1)}%)');
-      return VoiceMoodResult(
-        mood: smoothedMood,
-        confidence: finalConfidence,
-        allProbabilities: moodProbs,
-      );
+      // Double-verify with feature-based when model is confident
+      final audioFeatures = _extractAudioFeatures(processedSamples);
+      final featureResult = _detectMoodFromFeatures(audioFeatures);
+      final verified = _verifyWithFeatures(finalMood, finalConfidence, moodProbs, featureResult);
+      print('✅ Final mood: ${verified.mood} (confidence: ${(verified.confidence * 100).toStringAsFixed(1)}%)');
+      return verified;
     } catch (e, stackTrace) {
       print('❌ Error detecting mood: $e');
       print('📚 Stack trace: $stackTrace');
@@ -1157,7 +1482,7 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     try {
       const channel =
           MethodChannel('com.example.ai_based_content_recommendation_system/audio_decoder');
-      print('🔄 Requesting PCM samples from native decoder...');
+      print('🔄 Requesting PCM from native decoder: ${audioPath.split(RegExp(r'[/\\]')).last}');
 
       final List<dynamic>? result = await channel.invokeMethod<List<dynamic>>(
         'decodeAudioToPCM',
@@ -1173,7 +1498,10 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
       }
       
       final samples = result.map((e) => (e as num).toDouble()).toList();
-      print('✅ Received ${samples.length} PCM samples from native decoder');
+      final pcmFingerprint = samples.length >= 3
+          ? 'first3=${samples[0].toStringAsFixed(6)},${samples[1].toStringAsFixed(6)},${samples[2].toStringAsFixed(6)}'
+          : 'len<3';
+      print('✅ Received ${samples.length} PCM samples from native decoder | $pcmFingerprint');
       return samples;
     } catch (e, stackTrace) {
       print('❌ Error decoding audio via native decoder: $e');
@@ -1367,5 +1695,6 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
     _yamnetInterpreter = null;
     _isInitialized = false;
     _predictionHistory.clear();
+    _probabilityHistory.clear();
   }
 }

@@ -43,7 +43,15 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
   String? _gptInterpretedMood;
   Timer? _recordingTimer;
   DateTime? _recordingStartTime;
-  
+
+  // Dual mode: tap-to-record vs hold-to-record
+  static const int _holdThresholdMs = 400; // Press longer than this = hold gesture
+  static const int _minTapToStopRecordingMs = 600; // Min recording time before tap can stop (prevents accidental double-tap)
+  bool _recordingStartedByHold = false; // true = started by long-press; false = started by tap
+  DateTime? _pressStartTime;
+  Timer? _holdTimer;
+  DateTime? _tapModeRecordingStartedAt; // When tap-mode recording started (for min duration before tap-to-stop)
+
   // Content type filters
   final Set<ContentType> _selectedContentTypes = {ContentType.youtube, ContentType.tmdb, ContentType.spotify};
 
@@ -115,6 +123,45 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
     }
   }
 
+  /// Called when press ends (tap up or cancel). Differentiates tap vs hold and starts/stops recording.
+  void _handlePressEnd({required bool cancel}) {
+    _holdTimer?.cancel();
+    _holdTimer = null;
+    if (_pressStartTime == null) return;
+    final duration = DateTime.now().difference(_pressStartTime!);
+    _pressStartTime = null;
+
+    if (_isRecording) {
+      if (_recordingStartedByHold) {
+        _stopRecording();
+        return;
+      }
+      // Tap mode: stop only if min duration elapsed (prevents accidental double-tap) or gesture was cancelled
+      if (_tapModeRecordingStartedAt != null) {
+        final recordingDuration = DateTime.now().difference(_tapModeRecordingStartedAt!);
+        if (recordingDuration.inMilliseconds >= _minTapToStopRecordingMs || cancel) {
+          _stopRecording();
+        }
+      } else {
+        _stopRecording();
+      }
+      return;
+    }
+
+    if (cancel) return;
+    // Short press = tap to start recording
+    if (duration.inMilliseconds < _holdThresholdMs) {
+      _recordingStartedByHold = false;
+      _tapModeRecordingStartedAt = DateTime.now();
+      _startRecording();
+    }
+    // Long press but timer didn't fire in time (e.g. scheduler delay): start recording so release can stop
+    else if (mounted && _isInitialized) {
+      _recordingStartedByHold = true;
+      _startRecording();
+    }
+  }
+
   Future<void> _startRecording() async {
     if (_isRecording || !_isInitialized) return;
 
@@ -122,8 +169,7 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
     if (started) {
       _recordingStartTime = DateTime.now();
       setState(() => _isRecording = true);
-      
-      // Auto-stop after 10 seconds maximum
+      // Auto-stop after 10 seconds maximum (both modes)
       _recordingTimer = Timer(const Duration(seconds: 10), () {
         if (_isRecording) {
           _stopRecording();
@@ -136,6 +182,12 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
 
   Future<void> _stopRecording() async {
     if (!_isRecording) return;
+
+    _holdTimer?.cancel();
+    _holdTimer = null;
+    _pressStartTime = null;
+    _tapModeRecordingStartedAt = null;
+    _recordingStartedByHold = false;
 
     // Cancel auto-stop timer
     _recordingTimer?.cancel();
@@ -215,7 +267,7 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
     // Process the audio to detect mood using YAMNet
     print('🎤 Processing audio with YAMNet model...');
     final result = await _moodService.detectMoodFromAudio(audioPath);
-    
+    // result.mood is the single source of truth from the model pipeline; UI displays it without overwriting.
     // VERY RELAXED Validation: Accept almost all detections
     // Only reject if it's clearly an error or extremely low confidence
     final isNeutralWithExtremelyHighConfidence = result.mood == 'neutral' && result.confidence > 0.85;
@@ -237,7 +289,7 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
     // Only reject if there's an actual error or extremely dominant neutral (likely silence)
     if (result.isSuccess && result.error == null && !isNeutralWithExtremelyHighConfidence) {
       setState(() {
-        _detectedMood = result.mood;
+        _detectedMood = result.mood; // Exact label from backend; no default or override.
       });
       
       print('✅ ACCEPTED: YAMNet detected mood: ${result.mood} (confidence: ${(result.confidence * 100).toStringAsFixed(1)}%)');
@@ -494,6 +546,7 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
   @override
   void dispose() {
     _recordingTimer?.cancel();
+    _holdTimer?.cancel();
     _pulseController.dispose();
     _fadeController.dispose();
     _recordingService.dispose();
@@ -628,16 +681,29 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
                           
                           const SizedBox(height: 60),
                           
-                          // Recording Button
+                          // Recording Button (tap to start/stop, or hold to record)
                           AnimatedBuilder(
                             animation: _pulseAnimation,
                             builder: (context, child) {
                               return Transform.scale(
                                 scale: _isRecording ? _pulseAnimation.value : 1.0,
                                 child: GestureDetector(
-                                  onTapDown: (_) => _startRecording(),
-                                  onTapUp: (_) => _stopRecording(),
-                                  onTapCancel: () => _stopRecording(),
+                                  onTapDown: (_) {
+                                    _holdTimer?.cancel();
+                                    _pressStartTime = DateTime.now();
+                                    _holdTimer = Timer(
+                                      Duration(milliseconds: _holdThresholdMs),
+                                      () {
+                                        _holdTimer = null;
+                                        if (mounted && !_isRecording && _isInitialized) {
+                                          _recordingStartedByHold = true;
+                                          _startRecording();
+                                        }
+                                      },
+                                    );
+                                  },
+                                  onTapUp: (_) => _handlePressEnd(cancel: false),
+                                  onTapCancel: () => _handlePressEnd(cancel: true),
                                   child: Container(
                                     width: 140,
                                     height: 140,
@@ -692,7 +758,9 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
                             )
                           else if (_isRecording)
                             Text(
-                              'Recording... Speak now',
+                              _recordingStartedByHold
+                                  ? 'Recording... Release to stop'
+                                  : 'Recording... Tap again to stop',
                               style: GoogleFonts.inter(
                                 fontSize: 18,
                                 color: Colors.red.shade300,
@@ -701,11 +769,12 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
                             )
                           else
                             Text(
-                              'Hold to record your answer',
+                              'Tap to start, tap again to stop\nOr hold to record',
                               style: GoogleFonts.inter(
                                 fontSize: 16,
                                 color: Colors.white.withOpacity(0.7),
                               ),
+                              textAlign: TextAlign.center,
                             ),
                         ],
                         
@@ -740,7 +809,7 @@ class _SimpleVoiceWelcomeScreenState extends ConsumerState<SimpleVoiceWelcomeScr
                                 ),
                                 if (_detectedMood != null)
                                   Text(
-                                    'Detected: $_detectedMood',
+                                    'Detected: $_detectedMood', // Exact backend label (angry, fear, sad, etc.); no remap or default.
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
                                       color: Colors.white.withOpacity(0.7),

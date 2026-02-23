@@ -1,3 +1,60 @@
+import 'dart:math';
+
+// Album art URLs: Unsplash (reliable) first, then Spotify CDN (may require headers).
+// Unsplash loads consistently; i.scdn.co can return 403 without proper headers.
+const List<String> _spotifyAlbumCoverUrls = [
+  // Unsplash - music/abstract art (always loads)
+  'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1557683316-973673baf926?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=300&h=300&fit=crop',
+  'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=300&h=300&fit=crop',
+  // Spotify CDN (i.scdn.co) - may load with headers
+  'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36', // Blinding Lights
+  'https://i.scdn.co/image/ab67616d0000b273e419ccba0baa8bd3d301a2c6', // Watermelon Sugar
+  'https://i.scdn.co/image/ab67616d0000b273eb136e1ea1c244c0b8373f61', // Levitating - Future Nostalgia
+  'https://i.scdn.co/image/ab67616d0000b273e7e3c3f43bfbb098431ad274', // Good 4 U - SOUR
+  'https://i.scdn.co/image/ab67616d0000b273c1b855ceed4f2c3e2dc647a3c', // Stay - F*CK LOVE
+  'https://i.scdn.co/image/ab67616d0000b2730355a2a1e549c3a477ee2f68', // Industry Baby - Montero
+  'https://i.scdn.co/image/ab67616d0000b2730233c2dde82ef9502e8670c7', // Heat Waves - Dreamland
+  'https://i.scdn.co/image/ab67616d0000b273c75e72e4150220b8a18d9d32', // Peaches - Justice
+  'https://i.scdn.co/image/ab67616d0000b273ab78783b1a9a02851934c3e3', // Kiss Me More - Planet Her
+  'https://i.scdn.co/image/ab67616d0000b2730c6b6787522ac192cd2f5da92', // Pasoori - Coke Studio
+  'https://i.scdn.co/image/ab67616d0000b273dc33c64782390c6f80d5982c', // Kesariya - Brahmastra
+  'https://i.scdn.co/image/ab67616d0000b273ec96e006b3c5bd8e2b3c7b0f2', // Shape of You - ÷
+  'https://i.scdn.co/image/ab67616d0000b273ba12790c71a7ad907d5e8f2c', // Dynamite - BTS
+  'https://i.scdn.co/image/ab67616d0000b2732e8ed79e177ff6011076f5f0e', // Despacito
+  'https://i.scdn.co/image/ab67616d0000b273f2248cf6ead54d295391c510', // Sunflower - Spider-Verse
+  'https://i.scdn.co/image/ab67616d0000b27342999edfb7ec7c2c33ab1f28', // Easy On Me - 30
+  'https://i.scdn.co/image/ab67616d0000b27310f5456b3ac43e337165b8e5', // Bad Habits - =
+  'https://i.scdn.co/image/ab67616d0000b27360d30e14c65176eda2eb2a6c', // Butter - BTS
+  'https://i.scdn.co/image/ab67616d0000b273fc472565f5f35aa04ea31f80', // Senorita
+  'https://i.scdn.co/image/ab67616d0000b2736f91499496186b1f041b4649', // Havana
+  'https://i.scdn.co/image/ab67616d0000b273b3d5b53f6ec210a3d5e0b936', // Dance Monkey
+  'https://i.scdn.co/image/ab67616d0000b273d5773ae6e1ba7bd321ad7ab9', // Circles - Post Malone
+  'https://i.scdn.co/image/ab67616d0000b2730e0b7264e2e32b2a7e04a28e', // Rockstar - Post Malone
+  'https://i.scdn.co/image/ab67616d0000b273e0f2356024a1e7c7b2adc317', // Shivers - Ed Sheeran
+  'https://i.scdn.co/image/ab67616d0000b2735f672545f5b8e6e4e6d0d1e2', // Perfect - Ed Sheeran
+  'https://i.scdn.co/image/ab67616d0000b273d8989c4be257fee1e66738d1', // Someone You Loved - Lewis Capaldi
+  'https://i.scdn.co/image/ab67616d0000b273d95c3e050e0f7d52c31c7b3e', // Hello - Adele
+  'https://i.scdn.co/image/ab67616d0000b2732797adc2f56e7c460e1b2770', // Positions - Ariana Grande
+  'https://i.scdn.co/image/ab67616d0000b2734a383fb3d9d3ab6a5e0c4d5e', // Brown Munde - AP Dhillon
+  'https://i.scdn.co/image/ab67616d0000b273b25fe9efcd14e39e92dc2a9a', // 295 - Sidhu Moose Wala
+  'https://i.scdn.co/image/ab67616d0000b2739e87357f1645dce6d24ffa28', // Raataan Lambiyan
+  'https://i.scdn.co/image/ab67616d0000b273c6dda6521256a9e81e46b1a2', // Tum Hi Ho - Arijit
+  'https://i.scdn.co/image/ab67616d0000b273e65d764cebf76ae61f7f09a8', // Channa Mereya
+  'https://i.scdn.co/image/ab67616d0000b2730c6b6787522ac192cd2f5da92', // Tere Bin - Atif Aslam
+  'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36', // Save Your Tears - After Hours
+  'https://i.scdn.co/image/ab67616d0000b273ba12790c71a7ad907d5e8f2c', // Permission to Dance - BTS
+  'https://i.scdn.co/image/ab67616d0000b27360d30e14c65176eda2eb2a6c', // Fake Love - BTS
+  'https://i.scdn.co/image/ab67616d0000b2730ac4a13137c7d1c0d31ab6c5', // Boy With Luv - BTS
+];
+
 // Real Spotify album cover URLs for 100+ unique songs with diverse genres (English, Desi, Indian, Pakistani)
 class SpotifyContent {
   static List<Map<String, dynamic>> getMockSpotifyContent(String query, String type, int limit) {
@@ -1423,13 +1480,20 @@ class SpotifyContent {
       },
     ];
     
-    // Process tracks to ensure valid URLs
-    final processedTracks = mockTracks.map((track) {
+    // Process tracks: assign real Spotify album covers (i.scdn.co) like YouTube/TMDB previews
+    final processedTracks = mockTracks.asMap().entries.map((entry) {
+      final i = entry.key;
+      final track = Map<String, dynamic>.from(entry.value);
+      // Replace Unsplash placeholder with real Spotify CDN album art
+      final album = Map<String, dynamic>.from(track['album'] as Map<String, dynamic>);
+      album['images'] = [
+        {'url': _spotifyAlbumCoverUrls[i % _spotifyAlbumCoverUrls.length], 'height': 300, 'width': 300}
+      ];
+      track['album'] = album;
       // If the external URL is invalid (contains simple numbers), create a search URL
       final externalUrl = (track['external_urls'] as Map<String, dynamic>?)?['spotify'] as String?;
       if (externalUrl != null && externalUrl.contains('/track/') && 
           RegExp(r'/track/\d+$').hasMatch(externalUrl)) {
-        // This is a fake URL, replace with search URL
         track['external_urls'] = {
           'spotify': 'https://open.spotify.com/search/${Uri.encodeComponent(track['name'] as String)}'
         };
@@ -1437,9 +1501,18 @@ class SpotifyContent {
       return track;
     }).toList();
     
-    // For unlimited content, return all tracks if query is generic
-    if (['popular', 'trending', 'hits', 'charts', 'top', 'viral', 'new', 'hot', 'music', 'song', 'track', 'latest', 'best', 'favorite', 'love', 'desi', 'bollywood', 'punjabi', 'pakistani', 'indian', 'english'].contains(query.toLowerCase())) {
-      return processedTracks.take(limit).toList();
+    // For unlimited content, shuffle and return different subset each call (like YouTube/TMDB variety)
+    const genericQueries = [
+      'popular', 'trending', 'hits', 'charts', 'top', 'viral', 'new', 'hot',
+      'music', 'song', 'track', 'latest', 'best', 'favorite', 'love',
+      'desi', 'bollywood', 'punjabi', 'pakistani', 'indian', 'english',
+      'happy', 'sad', 'calm', 'angry', 'upbeat', 'chill', 'party',
+      'cheerful', 'melancholy', 'relax', 'meditation', 'intense', 'exciting',
+    ];
+    if (genericQueries.contains(query.toLowerCase())) {
+      final shuffled = List<Map<String, dynamic>>.from(processedTracks)
+        ..shuffle(Random(DateTime.now().millisecondsSinceEpoch));
+      return shuffled.take(limit).toList();
     }
     
     // For specific queries, filter by name

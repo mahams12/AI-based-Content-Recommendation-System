@@ -297,23 +297,28 @@ class _MediaPlayerState extends State<MediaPlayer> {
                               strokeWidth: 2,
                             ),
                           )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                _getPlatformIcon(),
-                                size: 18,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _getPlayButtonText(),
-                                style: const TextStyle(
+                        : FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _getPlatformIcon(),
+                                  size: 18,
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w700,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                Text(
+                                  _getPlayButtonText(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
                   ),
                 ),

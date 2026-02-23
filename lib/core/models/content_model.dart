@@ -365,7 +365,7 @@ class ContentItem extends Equatable {
       title: json['name'] ?? '',
       description: 'Track by $artistNames',
       thumbnailUrl: thumbnailUrl,
-      audioUrl: null, // No preview playback - only recommendations
+      audioUrl: json['preview_url'] as String?,
       externalUrl: json['external_urls']?['spotify'],
       platform: ContentType.spotify,
       category: ContentCategory.music,
