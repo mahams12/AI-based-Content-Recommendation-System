@@ -1481,7 +1481,7 @@ class VoiceMoodServiceMobile implements VoiceMoodServiceInterface {
   Future<List<double>?> _decodeAudioToPCM(String audioPath) async {
     try {
       const channel =
-          MethodChannel('com.example.ai_based_content_recommendation_system/audio_decoder');
+          MethodChannel('com.contentnation.app/audio_decoder');
       print('🔄 Requesting PCM from native decoder: ${audioPath.split(RegExp(r'[/\\]')).last}');
 
       final List<dynamic>? result = await channel.invokeMethod<List<dynamic>>(

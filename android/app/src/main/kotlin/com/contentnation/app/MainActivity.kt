@@ -1,4 +1,4 @@
-package com.example.ai_based_content_recommendation_system
+package com.contentnation.app
 
 import android.media.MediaCodec
 import android.media.MediaExtractor
@@ -12,7 +12,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example.ai_based_content_recommendation_system/audio_decoder"
+    private val CHANNEL = "com.contentnation.app/audio_decoder"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         // Use the default FlutterActivity registration so that all plugins

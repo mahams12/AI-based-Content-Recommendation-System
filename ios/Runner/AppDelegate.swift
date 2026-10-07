@@ -10,7 +10,7 @@ import AVFoundation
   ) -> Bool {
     let controller = window?.rootViewController as! FlutterViewController
     let audioDecoderChannel = FlutterMethodChannel(
-      name: "com.example.ai_based_content_recommendation_system/audio_decoder",
+      name: "com.contentnation.app/audio_decoder",
       binaryMessenger: controller.binaryMessenger
     )
     
